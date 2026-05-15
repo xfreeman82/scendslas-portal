@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCEND Portal — Overview</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #000000;
+    --card: #0c0c0c;
+    --card-elev: #161616;
+    --text: #ffffff;
+    --muted: #8c8c8c;
+    --accent: #0abab5;
+    --accent-bright: #2dd4cf;
+    --accent-soft: rgba(10,186,181,0.16);
+    --green: #4ade80;
+    --amber: #f5c451;
+    --red: #f87171;
+    --border: #262626;
+    --border-strong: #3a3a3a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; min-height: 100vh; }
+
+  /* Header */
+  .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; }
+  .header-top { display: flex; align-items: center; gap: 16px; padding: 16px 0 12px; flex-wrap: wrap; }
+  .brand { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: var(--accent); white-space: nowrap; }
+  .brand-sub { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); white-space: nowrap; }
+  .header-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .date-input { background: var(--card-elev); border: 1px solid var(--border-strong); color: var(--text); font-size: 13px; padding: 6px 10px; border-radius: 4px; }
+  .date-input:focus { outline: 1px solid var(--accent); }
+  .date-label { font-size: 11px; color: var(--muted); }
+  .btn { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 6px 16px; font-size: 13px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--accent-soft); }
+  .client-link { font-size: 12px; color: var(--muted); text-decoration: none; white-space: nowrap; }
+  .client-link:hover { color: var(--accent); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+  .tab-btn { padding: 12px 20px; font-size: 13px; font-weight: 600; color: var(--muted); background: transparent; border: none; border-bottom: 3px solid transparent; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.15s; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Main */
+  .main { padding: 24px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Table */
+  .table-wrap { background: var(--card); border: 1px solid var(--border); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--card-elev); }
+  thead th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr { border-top: 1px solid var(--border); }
+  tbody tr:hover { background: var(--card-elev); }
+  tbody td { padding: 10px 14px; color: var(--text); white-space: nowrap; }
+
+  /* Pct colors */
+  .pct-green { color: var(--green); font-weight: 600; }
+  .pct-amber { color: var(--amber); font-weight: 600; }
+  .pct-red { color: var(--red); font-weight: 600; }
+
+  /* States */
+  .spinner-wrap { display: flex; align-items: center; justify-content: center; padding: 60px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box { background: rgba(248,113,113,0.1); border: 1px solid var(--red); color: var(--red); padding: 16px 20px; border-radius: 4px; font-size: 13px; margin-bottom: 16px; }
+  .empty-box { color: var(--muted); text-align: center; padding: 48px 20px; font-size: 14px; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-bright); text-decoration: underline; }
+
+  /* Bulk selection */
+  .late-check { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+  .bulk-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--accent-soft); border: 1px solid var(--accent); padding: 10px 16px; margin-bottom: 12px; border-radius: 4px; }
+  .bulk-bar-count { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; margin-right: 4px; }
+  .btn-bulk-excl { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 5px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .btn-bulk-excl:hover { background: var(--accent-soft); }
+  .btn-bulk-cancel { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .btn-bulk-cancel:hover { color: var(--red); border-color: var(--red); }
+
+  /* Exclusion form */
+  .excl-form td { background: var(--card-elev) !important; padding: 12px 14px !important; }
+  .excl-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .excl-select, .excl-input { background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); padding: 5px 10px; border-radius: 4px; font-size: 12px; font-family: inherit; }
+  .excl-select:focus, .excl-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+  .excl-save { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .excl-save:hover { background: var(--accent-soft); }
+  .excl-cancel { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .excl-cancel:hover { border-color: var(--red); color: var(--red); }
+  .btn-exclude { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 3px 10px; border-radius: 3px; font-size: 11px; cursor: pointer; }
+  .btn-exclude:hover { border-color: var(--red); color: var(--red); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-muted { background: rgba(140,140,140,0.15); color: var(--muted); }
+  .tab-badge { display: inline-block; background: var(--red); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+
+  /* Goods In dashboard */
+  .gi-kpi-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .gi-kpi { background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--accent); padding: 18px 24px; flex: 1; min-width: 140px; }
+  .gi-kpi.green { border-top-color: var(--green); }
+  .gi-kpi.amber { border-top-color: var(--amber); }
+  .gi-kpi.red   { border-top-color: var(--red); }
+  .gi-kpi.muted { border-top-color: var(--muted); }
+  .gi-kpi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+  .gi-kpi-value { font-size: 28px; font-weight: 700; line-height: 1; }
+  .gi-kpi-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .gi-charts { display: grid; grid-template-columns: 1fr 340px; gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .gi-charts { grid-template-columns: 1fr; } }
+  .gi-chart-card { background: var(--card); border: 1px solid var(--border); padding: 20px; }
+  .gi-chart-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 16px; }
+  .gi-bar-wrap { position: relative; height: 260px; }
+  .gi-donut-wrap { position: relative; height: 260px; display: flex; align-items: center; justify-content: center; }
+  .gi-legend { display: flex; gap: 16px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+  .gi-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .gi-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .gi-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  .gi-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .gi-select { background: var(--card-elev); border: 1px solid var(--border-strong); color: var(--text); font-size: 12px; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+  .gi-select:focus { outline: 1px solid var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="brand">SCEND</span>
+    <span class="brand-sub">— Overview</span>
+    <div class="header-controls">
+      <select id="datePreset" class="date-input" onchange="applyDatePreset(this.value)" style="cursor:pointer">
+        <option value="month">This Month</option>
+        <option value="7d">Last 7 Days</option>
+        <option value="lastmonth">Last Month</option>
+        <option value="3m">Last 3 Months</option>
+        <option value="year">Last Year</option>
+        <option value="custom">Custom</option>
+      </select>
+      <span class="date-label">From</span>
+      <input type="date" id="dateFrom" class="date-input" onchange="document.getElementById('datePreset').value='custom'">
+      <span class="date-label">To</span>
+      <input type="date" id="dateTo" class="date-input" onchange="document.getElementById('datePreset').value='custom'">
+      <button class="btn" onclick="applyFilters()">Apply</button>
+      <a href="client.html" class="client-link">Client Portal →</a>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('goods-in')">Goods In</button>
+    <button class="tab-btn" onclick="switchTab('dispatch')">Dispatch SLA</button>
+    <button class="tab-btn" onclick="switchTab('returns')">Returns</button>
+    <button class="tab-btn" id="tab-btn-late" onclick="switchTab('late')">Late Orders</button>
+    <button class="tab-btn" onclick="switchTab('courier')">Courier Performance</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="tab-goods-in" class="tab-panel active"></div>
+  <div id="tab-dispatch" class="tab-panel"></div>
+  <div id="tab-returns" class="tab-panel"></div>
+  <div id="tab-late" class="tab-panel"></div>
+  <div id="tab-courier" class="tab-panel"></div>
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://jvdiokascttxrcwfbxww.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2ZGlva2FzY3R0eHJjd2ZieHd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Njk5OTMsImV4cCI6MjA5NDE0NTk5M30.ANQXpY__KcpKKWC22FSgsRY2U4QUUKZqubd5_05sp10';
+const INBOUND_URL = 'https://hook.eu2.make.com/ltc2hhoicek766i8eexa1uxsk2gxh22r';
+
+// Normalise legacy vendor names from Make.com webhook to current canonical names
+const VENDOR_ALIASES = { 'SUPEKEEN': 'SUPERKEEN' };
+function normalizeVendor(name) { return VENDOR_ALIASES[name] || name; }
+
+const CLIENTS = [
+  "BRUNAE BODY","SF - Loop Earplugs","Overmind","ID Tribal Chimp","Bero","Mega Mounts",
+  "Merlins","PDC - Co Pack","Dominusecom","Gud Gummies","Canine Clear","OYO Skincare",
+  "Petgently","SCEND Packaging","EM Pharma","Production Bunker","Paint Like Frida","Podback",
+  "Goal Water","Aeyla","Creative Science","BergHOFF","Cocochoco","Bioflow","Zertus UK","LNDR",
+  "Franc James","Not Basics","The Fox Tan","Lapland UK","Sauce Shop","Monty","My Sunday Ski",
+  "The Uzzle","Motorlens","Fit-Tech","fettle","SUPERKEEN"
+];
+
+// ── UK Working Day Helpers ────────────────────────────────────────────────────
+const UK_BH = new Set([
+  "2025-01-01","2025-04-18","2025-04-21","2025-05-05","2025-05-26","2025-08-25","2025-12-25","2025-12-26",
+  "2026-01-01","2026-04-03","2026-04-06","2026-05-04","2026-05-25","2026-08-31","2026-12-25","2026-12-28",
+]);
+function isNonWorking(ds) {
+  const d = new Date(ds + "T00:00:00Z"), dow = d.getUTCDay();
+  return dow === 0 || dow === 6 || UK_BH.has(ds);
+}
+function effShip(ds) {
+  if (!ds) return ds;
+  let d = new Date(ds + "T00:00:00Z");
+  while (isNonWorking(d.toISOString().slice(0,10))) d.setUTCDate(d.getUTCDate()+1);
+  return d.toISOString().slice(0,10);
+}
+function effDispatch(ds) {
+  if (!ds) return ds;
+  let d = new Date(ds + "T00:00:00Z");
+  while (isNonWorking(d.toISOString().slice(0,10))) d.setUTCDate(d.getUTCDate()-1);
+  return d.toISOString().slice(0,10);
+}
+function slaStatus(order) {
+  const isBackordered = order.fulfillment_status?.toUpperCase() === 'BACKORDERED';
+  const hasBackorderTag = (order.tags || []).some(t => t.toLowerCase().includes('backorder'));
+  if (!order.required_ship_date || isBackordered || hasBackorderTag) return 'ineligible';
+  if (!order.shipped_date) return 'ineligible';
+  return effDispatch(order.shipped_date) <= effShip(order.required_ship_date) ? 'compliant' : 'late';
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+function fmtPct(n, d) {
+  if (!d) return '—';
+  return ((n / d) * 100).toFixed(2) + '%';
+}
+function fmtPctColored(n, d) {
+  if (!d) return '<span style="color:var(--muted)">—</span>';
+  const pct = (n / d) * 100;
+  const cls = pct >= 95 ? 'pct-green' : pct >= 85 ? 'pct-amber' : 'pct-red';
+  return `<span class="${cls}">${pct.toFixed(2)}%</span>`;
+}
+function fmtHours(h) {
+  if (h === null || h === undefined || h === '') return '—';
+  const n = parseFloat(h);
+  if (isNaN(n)) return '—';
+  if (n < 24) return n % 1 === 0 ? n + 'h' : n.toFixed(1) + 'h';
+  const days = n / 24;
+  return (days % 1 === 0 ? days : days.toFixed(1)) + 'd';
+}
+
+// ── Cache ─────────────────────────────────────────────────────────────────────
+let _inboundCache = null;
+let _giBarChart = null;
+let _giDonutChart = null;
+
+// ── Supabase Fetch ────────────────────────────────────────────────────────────
+async function sbFetchAll(table, filters, selectCols, orderBy) {
+  const PAGE = 1000;
+  const all = [];
+  let fromRow = 0;
+  while (true) {
+    const params = new URLSearchParams();
+    params.set('select', selectCols);
+    if (orderBy) params.set('order', orderBy);
+    filters.forEach(([k, v]) => params.append(k, v));
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Range': `${fromRow}-${fromRow + PAGE - 1}`,
+        'Range-Unit': 'items',
+      }
+    });
+    if (!res.ok) throw new Error(`Supabase ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error(data.message || 'Bad response');
+    all.push(...data);
+    if (data.length < PAGE) break;
+    fromRow += PAGE;
+  }
+  return all;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let activeTab = 'goods-in';
+let dateFrom = '';
+let dateTo = '';
+let sortState = {};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function applyDatePreset(preset) {
+  const now = new Date();
+  let from, to = now.toISOString().slice(0,10);
+  if (preset === 'month') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  } else if (preset === '7d') {
+    const d = new Date(now); d.setDate(d.getDate() - 7);
+    from = d.toISOString().slice(0,10);
+  } else if (preset === 'lastmonth') {
+    from = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0,10);
+  } else if (preset === '3m') {
+    const d = new Date(now); d.setMonth(d.getMonth() - 3);
+    from = d.toISOString().slice(0,10);
+  } else if (preset === 'year') {
+    const d = new Date(now); d.setFullYear(d.getFullYear() - 1);
+    from = d.toISOString().slice(0,10);
+  } else {
+    return; // custom — don't auto-reload
+  }
+  dateFrom = from; dateTo = to;
+  document.getElementById('dateFrom').value = from;
+  document.getElementById('dateTo').value = to;
+  sortState = {};
+  loadActiveTab();
+}
+
+function init() {
+  const now = new Date();
+  dateTo   = now.toISOString().slice(0,10);
+  dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  document.getElementById('dateFrom').value = dateFrom;
+  document.getElementById('dateTo').value   = dateTo;
+  document.getElementById('datePreset').value = 'month';
+  loadActiveTab();
+}
+
+function applyFilters() {
+  dateFrom = document.getElementById('dateFrom').value;
+  dateTo   = document.getElementById('dateTo').value;
+  sortState = {};
+  loadActiveTab();
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    const tabs = ['goods-in','dispatch','returns','late','courier'];
+    b.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  loadActiveTab();
+}
+
+function loadActiveTab() {
+  if (activeTab === 'goods-in') loadGoodsIn();
+  else if (activeTab === 'dispatch') loadDispatch();
+  else if (activeTab === 'returns') loadReturns();
+  else if (activeTab === 'late') loadLate();
+  else if (activeTab === 'courier') loadCourier();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function spinner() {
+  return `<div class="spinner-wrap"><div class="spinner"></div></div>`;
+}
+function errBox(msg) {
+  return `<div class="error-box">Error loading data: ${msg}</div>`;
+}
+function emptyBox(msg) {
+  return `<div class="empty-box">${msg}</div>`;
+}
+function clientLink(name) {
+  return `<a href="client.html?client=${encodeURIComponent(name)}">${name}</a>`;
+}
+
+// ── Sorting ───────────────────────────────────────────────────────────────────
+function getSortCol(key) {
+  return sortState[key] || null;
+}
+function doSort(key, idx, field) {
+  const sc = sortState[key];
+  if (sc && sc.idx === idx) {
+    sortState[key] = { idx, field, asc: !sc.asc };
+  } else {
+    sortState[key] = { idx, field, asc: true };
+  }
+  loadActiveTab();
+}
+function sortRows(rows, key) {
+  const sc = sortState[key];
+  if (!sc) return [...rows];
+  return [...rows].sort((a, b) => {
+    let av = a[sc.field], bv = b[sc.field];
+    if (av == null) av = '';
+    if (bv == null) bv = '';
+    if (!isNaN(parseFloat(av)) && !isNaN(parseFloat(bv))) {
+      return sc.asc ? parseFloat(av) - parseFloat(bv) : parseFloat(bv) - parseFloat(av);
+    }
+    av = String(av).toLowerCase();
+    bv = String(bv).toLowerCase();
+    return sc.asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+}
+
+function buildTable(key, cols, rows) {
+  const sc = getSortCol(key);
+  let html = `<div class="table-wrap"><table><thead><tr>`;
+  cols.forEach((c,i) => {
+    const isSorted = sc && sc.idx === i;
+    html += `<th class="${isSorted?'sorted':''}" onclick="doSort('${key}',${i},${JSON.stringify(c.field)})">${c.label} <span class="sort-icon">${isSorted ? (sc.asc?'▲':'▼') : '▲▼'}</span></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  if (rows.length === 0) {
+    html += `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted);padding:40px">No data found for this period</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      html += `<tr>`;
+      cols.forEach(c => {
+        const val = c.fmt ? c.fmt(r) : (r[c.field] ?? '—');
+        html += `<td>${val}</td>`;
+      });
+      html += `</tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// ── Goods In Tab ──────────────────────────────────────────────────────────────
+function poDate(r) {
+  return r.ClosedAt || r.DeliveredAt || r.ETA;
+}
+
+// Returns D2S in hours. DockToStockHours from Make.com is in DAYS so ×24.
+// Fallback chain: DeliveredAt→ClosedAt, DeliveredAt→IssueAt, ETA→ClosedAt, ETA→now.
+// ETA→now ensures every PO with items received always gets a figure.
+function dtsHours(r) {
+  const raw = parseFloat(r.DockToStockHours);
+  if (!isNaN(raw) && raw > 0) return raw * 24; // convert days → hours
+  if (raw === 0) return 0;
+  // Fallback 1: DeliveredAt → ClosedAt
+  if (r.DeliveredAt && r.ClosedAt) {
+    const diff = (new Date(r.ClosedAt) - new Date(r.DeliveredAt)) / 3600000;
+    if (diff >= 0) return diff;
+  }
+  // Fallback 2: DeliveredAt → IssueAt (for POs that ended in an issue state)
+  if (r.DeliveredAt && r.IssueAt) {
+    const diff = (new Date(r.IssueAt) - new Date(r.DeliveredAt)) / 3600000;
+    if (diff >= 0) return diff;
+  }
+  // Fallback 3: ETA → ClosedAt
+  if (r.ETA && r.ClosedAt) {
+    const diff = (new Date(r.ClosedAt) - new Date(r.ETA)) / 3600000;
+    if (diff >= 0 && diff < 720) return diff;
+  }
+  // Fallback 4: ETA → actual received date confirmed in this period (from Supabase)
+  if (r.ETA) {
+    const po = (r.PONumber || r.POID || '').trim();
+    const receivedDate = (window._giSbReceivedByPo || {})[po];
+    if (receivedDate) {
+      const diff = (new Date(receivedDate) - new Date(r.ETA)) / 3600000;
+      if (diff >= 0) return diff;
+    }
+  }
+  return null;
+}
+
+// Persistent filter state for goods in
+let _giClientFilter = 'All Clients';
+let _giStatusFilter = 'All';
+
+async function loadGoodsIn() {
+  const panel = document.getElementById('tab-goods-in');
+  panel.innerHTML = spinner();
+  try {
+    // Parallel: webhook (D2S + status) + Supabase goods_in (items/units)
+    const giFilters = [];
+    if (dateFrom) giFilters.push(['received_date', `gte.${dateFrom}`]);
+    if (dateTo)   giFilters.push(['received_date', `lte.${dateTo}`]);
+
+    const [webhookData, sbGoodsIn] = await Promise.all([
+      _inboundCache
+        ? Promise.resolve(_inboundCache)
+        : fetch(INBOUND_URL).then(r => { if(!r.ok) throw new Error(`Webhook ${r.status}`); return r.json(); }).then(d => {
+            // Normalise legacy vendor names (e.g. SUPEKEEN → SUPERKEEN)
+            d = d.map(r => r.VendorName ? { ...r, VendorName: normalizeVendor(r.VendorName) } : r);
+            _inboundCache = d; return d;
+          }),
+      sbFetchAll('goods_in', giFilters, 'client_name,po_number,received_date,sku,units', 'received_date.desc'),
+    ]);
+
+    // Filter webhook by date
+    const from = dateFrom ? new Date(dateFrom + 'T00:00:00Z') : null;
+    const to   = dateTo   ? new Date(dateTo   + 'T23:59:59Z') : null;
+    const allWebhook = webhookData.filter(r => {
+      const ds = poDate(r);
+      if (!ds) return true;
+      const d = new Date(ds);
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      return true;
+    });
+
+    // Build Supabase items lookup: po_number → total units (period-filtered)
+    const sbItemsByPo = {};
+    const sbItemsByClient = {};
+    const sbReceivedDateByPo = {}; // earliest received_date per PO within the period
+    sbGoodsIn.forEach(row => {
+      const po = (row.po_number || '').trim();
+      sbItemsByPo[po] = (sbItemsByPo[po] || 0) + (parseInt(row.units) || 0);
+      sbItemsByClient[row.client_name] = (sbItemsByClient[row.client_name] || 0) + (parseInt(row.units) || 0);
+      if (po && row.received_date) {
+        if (!sbReceivedDateByPo[po] || row.received_date < sbReceivedDateByPo[po])
+          sbReceivedDateByPo[po] = row.received_date;
+      }
+    });
+
+    // Store for later
+    window._giAllWebhook       = allWebhook;
+    window._giSbByPo           = sbItemsByPo;
+    window._giSbByClient       = sbItemsByClient;
+    window._giSbGoodsIn        = sbGoodsIn;
+    window._giSbReceivedByPo   = sbReceivedDateByPo;
+
+    renderGoodsIn(allWebhook, sbItemsByPo, sbItemsByClient, sbGoodsIn);
+
+  } catch(e) {
+    document.getElementById('tab-goods-in').innerHTML = errBox(e.message);
+  }
+}
+
+function renderGoodsIn(allWebhook, sbItemsByPo, sbItemsByClient, sbGoodsIn) {
+  const panel = document.getElementById('tab-goods-in');
+
+  // Apply client + status filters
+  const clientFilter = _giClientFilter;
+  const statusFilter = _giStatusFilter;
+
+  const filtered = allWebhook.filter(r => {
+    if (clientFilter !== 'All Clients' && (r.VendorName || 'Unknown') !== clientFilter) return false;
+    if (statusFilter !== 'All') {
+      const s = (r.FinalStatus || '').toLowerCase();
+      if (statusFilter === 'Closed'  && s !== 'closed') return false;
+      if (statusFilter === 'Issue'   && !(s === 'issue' || r.IssueAt)) return false;
+      if (statusFilter === 'Pending' && (s === 'closed' || s === 'issue' || r.IssueAt)) return false;
+    }
+    return true;
+  });
+
+  // KPIs
+  const totalPos  = filtered.length;
+  const closed    = filtered.filter(r => (r.FinalStatus||'').toLowerCase() === 'closed').length;
+  const issues    = filtered.filter(r => r.FinalStatus === 'issue' || r.IssueAt).length;
+  const pending   = totalPos - closed - issues;
+  const dtsVals    = filtered.map(r => dtsHours(r)).filter(v => v !== null && !isNaN(v));
+  const avgDts     = dtsVals.length ? dtsVals.reduce((a,b)=>a+b,0)/dtsVals.length : null;
+  const longestDts = dtsVals.length ? Math.max(...dtsVals) : null;
+  const longestPo  = longestDts != null ? (filtered.find(r => dtsHours(r) === longestDts) || {}) : {};
+  const issueRate  = totalPos ? (issues/totalPos*100) : 0;
+
+  // Items from Supabase
+  const totalItems = clientFilter === 'All Clients'
+    ? Object.values(sbItemsByClient).reduce((s,v)=>s+v,0)
+    : (sbItemsByClient[clientFilter] || 0);
+  // Count how many POs actually have items
+  const posWithItems = filtered.filter(r => (sbItemsByPo[(r.PONumber||r.POID||'')] || 0) > 0).length;
+
+  // Unique clients for filter dropdown
+  const allVendors = [...new Set(allWebhook.map(r => r.VendorName || 'Unknown'))].sort();
+
+  let html = `
+  <div class="gi-toolbar">
+    <div class="gi-filters">
+      <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Client:</span>
+      <select class="gi-select" onchange="_giClientFilter=this.value;renderGoodsIn(window._giAllWebhook,window._giSbByPo,window._giSbByClient,window._giSbGoodsIn)">
+        <option${clientFilter==='All Clients'?' selected':''}>All Clients</option>
+        ${allVendors.map(v=>`<option${clientFilter===v?' selected':''}>${v}</option>`).join('')}
+      </select>
+      <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-left:8px">Status:</span>
+      <select class="gi-select" onchange="_giStatusFilter=this.value;renderGoodsIn(window._giAllWebhook,window._giSbByPo,window._giSbByClient,window._giSbGoodsIn)">
+        ${['All','Closed','Issue','Pending'].map(s=>`<option${statusFilter===s?' selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <button class="btn" onclick="exportGoodsIn()">↓ Export CSV</button>
+  </div>
+
+  <div class="gi-kpi-row">
+    <div class="gi-kpi">
+      <div class="gi-kpi-label">Total POs Tracked</div>
+      <div class="gi-kpi-value" style="color:var(--accent)">${totalPos}</div>
+      <div class="gi-kpi-sub">${allVendors.length} clients · ${closed} closed · ${issues} issues · ${pending} pending</div>
+    </div>
+    <div class="gi-kpi muted">
+      <div class="gi-kpi-label">Items Received</div>
+      <div class="gi-kpi-value">${totalItems > 0 ? totalItems.toLocaleString() : '—'}</div>
+      <div class="gi-kpi-sub">${posWithItems > 0 ? `Across ${posWithItems} PO${posWithItems!==1?'s':''}` : 'No item data yet'}</div>
+    </div>
+    <div class="gi-kpi green">
+      <div class="gi-kpi-label">Avg Dock to Stock</div>
+      <div class="gi-kpi-value" style="color:var(--green)">${avgDts !== null ? fmtHours(avgDts) : '—'}</div>
+      <div class="gi-kpi-sub">${dtsVals.length} POs with D2S data</div>
+    </div>
+    <div class="gi-kpi amber">
+      <div class="gi-kpi-label">Longest Processing</div>
+      <div class="gi-kpi-value" style="color:var(--amber)">${longestDts !== null ? fmtHours(longestDts) : '—'}</div>
+      <div class="gi-kpi-sub">${(() => {
+        const id = longestPo.POID || longestPo.PONumber || '';
+        const label = longestPo.PONumber || longestPo.POID || '—';
+        return id ? `<a href="https://app.shiphero.com/dashboard/purchasing/orders/${id}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:2px;opacity:0.8">${label}</a>` : label;
+      })()}</div>
+    </div>
+    <div class="gi-kpi red">
+      <div class="gi-kpi-label">Issue Rate</div>
+      <div class="gi-kpi-value" style="color:${issueRate>10?'var(--red)':issueRate>5?'var(--amber)':'var(--text)'}">${issueRate.toFixed(0)}%</div>
+      <div class="gi-kpi-sub">${issues} of ${totalPos} POs</div>
+    </div>
+  </div>
+
+  <div class="gi-charts">
+    <div class="gi-chart-card">
+      <div class="gi-chart-title">Dock to Stock Hours by PO</div>
+      <div class="gi-bar-wrap"><canvas id="giBarChart"></canvas></div>
+    </div>
+    <div class="gi-chart-card">
+      <div class="gi-chart-title">Status Breakdown</div>
+      <div class="gi-donut-wrap"><canvas id="giDonutChart"></canvas></div>
+      <div class="gi-legend">
+        <div class="gi-legend-item"><div class="gi-legend-dot" style="background:rgba(74,222,128,0.8)"></div>Closed</div>
+        <div class="gi-legend-item"><div class="gi-legend-dot" style="background:rgba(248,113,113,0.8)"></div>Issue</div>
+        <div class="gi-legend-item"><div class="gi-legend-dot" style="background:rgba(245,196,81,0.8)"></div>Pending</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Per-client table
+  const byClient = {};
+  filtered.forEach(r => {
+    const name = r.VendorName || 'Unknown';
+    if (!byClient[name]) byClient[name] = [];
+    byClient[name].push(r);
+  });
+
+  let tableRows = Object.entries(byClient).map(([name, pos]) => {
+    const cd = pos.filter(r => (r.FinalStatus||'').toLowerCase() === 'closed').length;
+    const is = pos.filter(r => r.FinalStatus === 'issue' || r.IssueAt).length;
+    const pd = pos.length - cd - is;
+    const dv = pos.map(r => dtsHours(r)).filter(v => v !== null && !isNaN(v));
+    const av = dv.length ? dv.reduce((a,b)=>a+b,0)/dv.length : null;
+    const w24 = dv.filter(v => v<=24).length;
+    const items = sbItemsByClient[name] || 0;
+    return { _name:name, _total:pos.length, _closed:cd, _pending:pd, _issues:is,
+             _avgDts:av, _w24pct: dv.length?(w24/dv.length*100):null, _items:items };
+  });
+
+  if (!sortState['goods-in']) tableRows.sort((a,b) => b._total - a._total);
+  else tableRows = sortRows(tableRows, 'goods-in');
+
+  const cols = [
+    {label:'Client',    field:'_name',   fmt: r => clientLink(r._name)},
+    {label:'POs',       field:'_total'},
+    {label:'Closed',    field:'_closed', fmt: r => `<span style="color:var(--green)">${r._closed}</span>`},
+    {label:'Pending',   field:'_pending',fmt: r => r._pending>0?`<span style="color:var(--amber)">${r._pending}</span>`:`<span style="color:var(--muted)">0</span>`},
+    {label:'Issues',    field:'_issues', fmt: r => r._issues>0?`<span style="color:var(--red)">${r._issues}</span>`:`<span style="color:var(--muted)">0</span>`},
+    {label:'Avg D2S',   field:'_avgDts', fmt: r => r._avgDts!==null?fmtHours(r._avgDts):'<span style="color:var(--muted)">—</span>'},
+    {label:'≤24h %',    field:'_w24pct', fmt: r => r._w24pct!==null?fmtPctColored(r._w24pct,100):'<span style="color:var(--muted)">—</span>'},
+    {label:'Items',     field:'_items',  fmt: r => r._items>0?r._items.toLocaleString():'<span style="color:var(--muted)">—</span>'},
+  ];
+  html += buildTable('goods-in', cols, tableRows);
+
+  panel.innerHTML = html;
+
+  // Render bar chart
+  if (_giBarChart) { _giBarChart.destroy(); _giBarChart = null; }
+  const barCtx = document.getElementById('giBarChart');
+  if (barCtx && filtered.length > 0) {
+    const barColors = filtered.map(r => {
+      const s = (r.FinalStatus||'').toLowerCase();
+      if (s === 'closed') return 'rgba(74,222,128,0.75)';
+      if (s === 'issue' || r.IssueAt) return 'rgba(248,113,113,0.75)';
+      return 'rgba(245,196,81,0.75)';
+    });
+    _giBarChart = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: filtered.map(r => r.PONumber || r.POID || ''),
+        datasets: [{
+          label: 'D2S Hours',
+          data: filtered.map(r => dtsHours(r) ?? 0),
+          backgroundColor: barColors,
+          borderWidth: 0,
+          borderRadius: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const r = filtered[elements[0].index];
+          const id = r.POID || r.PONumber;
+          if (id) window.open(`https://app.shiphero.com/dashboard/purchasing/orders/${id}`, '_blank', 'noopener');
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const r = filtered[ctx.dataIndex];
+                const items = sbItemsByPo[(r.PONumber||r.POID||'')] || 0;
+                const lines = [`D2S: ${fmtHours(ctx.raw)}`, `Status: ${r.FinalStatus||'pending'}`, `Click to open in ShipHero`];
+                if (items > 0) lines.push(`Items: ${items.toLocaleString()}`);
+                if (r.VendorName) lines.push(`Client: ${r.VendorName}`);
+                return lines;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color:'#8c8c8c', font:{size:9}, maxRotation:45 }, grid:{color:'#1a1a1a'} },
+          y: { ticks: { color:'#8c8c8c', font:{size:11} }, grid:{color:'#1a1a1a'} }
+        }
+      }
+    });
+    if (barCtx) barCtx.style.cursor = 'pointer';
+  }
+
+  // Render donut chart
+  if (_giDonutChart) { _giDonutChart.destroy(); _giDonutChart = null; }
+  const donutCtx = document.getElementById('giDonutChart');
+  if (donutCtx && totalPos > 0) {
+    _giDonutChart = new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Closed','Issue','Pending'],
+        datasets: [{
+          data: [closed, issues, pending],
+          backgroundColor: ['rgba(74,222,128,0.8)','rgba(248,113,113,0.8)','rgba(245,196,81,0.8)'],
+          borderWidth: 0,
+          hoverOffset: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.label}: ${ctx.raw} (${(ctx.raw/totalPos*100).toFixed(1)}%)`
+            }
+          }
+        }
+      }
+    });
+  }
+}
+
+function exportGoodsIn() {
+  const sbRows = window._giSbGoodsIn || [];
+  const wbRows = (window._giAllWebhook || []).filter(r => {
+    if (_giClientFilter !== 'All Clients' && (r.VendorName||'Unknown') !== _giClientFilter) return false;
+    return true;
+  });
+  const dtsMap = {};
+  wbRows.forEach(r => {
+    const po = (r.PONumber||r.POID||'').trim();
+    if (po) dtsMap[po] = { dts: dtsHours(r), status:r.FinalStatus, eta:r.ETA, delivered:r.DeliveredAt, client:r.VendorName };
+  });
+
+  if (sbRows.length) {
+    const headers = ['Client','PO Number','Received Date','SKU','Units','Dock to Stock Hours','Status','ETA','Delivered At'];
+    const lines = [headers.join(',')];
+    sbRows.forEach(r => {
+      const wb = dtsMap[r.po_number] || {};
+      lines.push([
+        JSON.stringify(r.client_name||''), JSON.stringify(r.po_number||''),
+        r.received_date||'', JSON.stringify(r.sku||''), r.units||'',
+        wb.dts||'', wb.status||'',
+        wb.eta?wb.eta.slice(0,10):'', wb.delivered?wb.delivered.slice(0,10):'',
+      ].join(','));
+    });
+    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `goods-in-sku-${dateFrom}-${dateTo}.csv`; a.click();
+  } else {
+    const headers = ['Client','PO Number','ETA','Delivered At','D2S Hours','Status'];
+    const lines = [headers.join(',')];
+    wbRows.forEach(r => lines.push([
+      JSON.stringify(r.VendorName||''), JSON.stringify(r.PONumber||r.POID||''),
+      r.ETA?r.ETA.slice(0,10):'', r.DeliveredAt?r.DeliveredAt.slice(0,10):'',
+      r.DockToStockHours||'', r.FinalStatus||'',
+    ].join(',')));
+    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `goods-in-${dateFrom}-${dateTo}.csv`; a.click();
+  }
+}
+
+// ── Export Functions ──────────────────────────────────────────────────────────
+function csvDl(filename, headers, rows) {
+  const lines = [headers.join(','), ...rows];
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = filename; a.click();
+}
+function csvQ(v) { return v == null ? '' : JSON.stringify(String(v)); }
+
+function exportDispatch() {
+  const orders = window._dispatchOrders || [];
+  const headers = ['Client','Order #','Order Date','Required Ship','Shipped Date','Status','Items','Fulfillment Status','Tags'];
+  const rows = orders.map(o => [
+    csvQ(o.client_name), csvQ(o.order_number),
+    o.order_date?.slice(0,10)||'', o.required_ship_date||'', o.shipped_date||'',
+    slaStatus(o), o.items||'', csvQ(o.fulfillment_status),
+    csvQ((o.tags||[]).join('|')),
+  ].join(','));
+  csvDl(`dispatch-sla-${dateFrom}-${dateTo}.csv`, headers, rows);
+}
+
+function exportReturns() {
+  const returns = window._returnsData || [];
+  const endDs = dateTo || new Date().toISOString().slice(0,10);
+  const headers = ['Client','Order #','Date','SKU','Type','Days in System'];
+  const rows = returns.map(r => {
+    const days = r.created_date ? Math.max(0, Math.round((new Date(endDs+'T00:00:00Z') - new Date(r.created_date+'T00:00:00Z')) / 86400000)) : '';
+    return [csvQ(r.client_name), csvQ(r.order_number), r.created_date||'',
+            csvQ(r.sku), csvQ(r.type), days].join(',');
+  });
+  csvDl(`returns-${dateFrom}-${dateTo}.csv`, headers, rows);
+}
+
+function exportLate() {
+  const orders = window._lateOrders || [];
+  const headers = ['Client','Order #','Order Date','Required Ship','Shipped Date','Days Late'];
+  const rows = orders.map(o => {
+    const shipped = effDispatch(o.shipped_date), req = effShip(o.required_ship_date);
+    const days = Math.round((new Date(shipped+'T00:00:00Z') - new Date(req+'T00:00:00Z')) / 86400000);
+    return [csvQ(o.client_name), csvQ(o.order_number), o.order_date?.slice(0,10)||'',
+            o.required_ship_date||'', o.shipped_date||'', days].join(',');
+  });
+  csvDl(`late-orders-${dateFrom}-${dateTo}.csv`, headers, rows);
+}
+
+// ── Dispatch SLA Tab ──────────────────────────────────────────────────────────
+// Working hours between order receipt and dispatch.
+// Uses order_received_at (full timestamp) when available; falls back to order_date at 08:00.
+// Cut-off: orders received after 20:00 → clock starts at 08:00 next working day.
+// Orders received before 08:00 → clock starts at 08:00 same day.
+// Weekend & bank-holiday orders → excluded (returns null).
+function effectiveOrderStart(receivedAt, orderDs) {
+  let dt;
+  if (receivedAt) {
+    dt = new Date(receivedAt);
+  } else if (orderDs) {
+    dt = new Date(orderDs + 'T08:00:00Z'); // no time data → assume open of business
+  } else {
+    return null;
+  }
+
+  const ds = dt.toISOString().slice(0, 10);
+  const dow = dt.getUTCDay();
+
+  // Skip weekend / bank-holiday orders
+  if (dow === 0 || dow === 6 || UK_BH.has(ds)) return null;
+
+  const h = dt.getUTCHours() + dt.getUTCMinutes() / 60;
+
+  if (receivedAt && h >= 20) {
+    // After cut-off → next working day at 08:00
+    let next = new Date(dt);
+    next.setUTCDate(next.getUTCDate() + 1);
+    next.setUTCHours(8, 0, 0, 0);
+    while (isNonWorking(next.toISOString().slice(0, 10))) next.setUTCDate(next.getUTCDate() + 1);
+    return next;
+  }
+  if (receivedAt && h < 8) {
+    // Before opening → same day at 08:00
+    const adj = new Date(dt);
+    adj.setUTCHours(8, 0, 0, 0);
+    return adj;
+  }
+
+  return dt;
+}
+
+function workingHoursBetween(receivedAt, orderDs, shippedDs) {
+  if (!shippedDs) return null;
+  const startDt = effectiveOrderStart(receivedAt, orderDs);
+  if (!startDt) return null; // weekend / excluded
+
+  // Dispatch: shipped_date is date-only — treat end of working day (20:00)
+  const endMs = new Date(shippedDs + 'T20:00:00Z').getTime();
+  const startMs = startDt.getTime();
+  if (endMs <= startMs) return 0;
+
+  // Walk day-by-day counting working hours (08:00–20:00)
+  let hours = 0;
+  let cur = new Date(startDt.toISOString().slice(0, 10) + 'T00:00:00Z');
+  while (true) {
+    const ds = cur.toISOString().slice(0, 10);
+    if (new Date(ds + 'T00:00:00Z').getTime() > endMs) break;
+    if (!isNonWorking(ds)) {
+      const winStart = new Date(ds + 'T08:00:00Z').getTime();
+      const winEnd   = new Date(ds + 'T20:00:00Z').getTime();
+      const segStart = Math.max(startMs, winStart);
+      const segEnd   = Math.min(endMs,   winEnd);
+      if (segEnd > segStart) hours += (segEnd - segStart) / 3600000;
+    }
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return hours;
+}
+
+function fmtProcHours(h) {
+  if (h === null || h === undefined) return '<span style="color:var(--muted)">—</span>';
+  if (h < 1) return '<1h';
+  if (h < 24) return h.toFixed(1) + 'h';
+  return (h / 12).toFixed(1) + 'd'; // 12 working hours per day
+}
+
+async function loadDispatch() {
+  const panel = document.getElementById('tab-dispatch');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [];
+    if (dateFrom) filters.push(['order_date', `gte.${dateFrom}`]);
+    if (dateTo) filters.push(['order_date', `lte.${dateTo}`]);
+
+    const [orders, errors, exclusions] = await Promise.all([
+      sbFetchAll('orders', filters, 'id,client_name,order_number,order_date,order_received_at,required_ship_date,shipped_date,fulfillment_status,tags,items', 'order_date.desc'),
+      sbFetchAll('packing_errors', [], 'id,order_number,client_name,error_type', null),
+      sbFetchAll('sla_exclusions', [], 'id,order_number,client_name', null),
+    ]);
+    const excludedSet = new Set(exclusions.map(e => `${e.client_name}:${e.order_number}`));
+    function effSlaStatus(o) {
+      if (excludedSet.has(`${o.client_name}:${o.order_number}`)) return 'excluded';
+      return slaStatus(o);
+    }
+
+    // Map errors by client
+    const errorsByClient = {};
+    const errorOrdersByClient = {};
+    errors.forEach(e => {
+      if (!errorsByClient[e.client_name]) { errorsByClient[e.client_name] = 0; errorOrdersByClient[e.client_name] = new Set(); }
+      errorsByClient[e.client_name]++;
+      errorOrdersByClient[e.client_name].add(e.order_number);
+    });
+
+    // ── Global KPIs ───────────────────────────────────────────────────────────
+    const allShipped    = orders.filter(o => o.shipped_date);
+    const allEligible   = orders.filter(o => { const s = effSlaStatus(o); return s === 'compliant' || s === 'late'; });
+    const allCompliant  = allEligible.filter(o => effSlaStatus(o) === 'compliant');
+    const totalErrOrders = new Set(errors.map(e => `${e.client_name}:${e.order_number}`)).size;
+
+    // Items shipped (sum of line items across shipped orders)
+    const totalItemsShipped = allShipped.reduce((s, o) => s + (parseInt(o.items) || 0), 0);
+
+    // Average processing time — eligible orders only (weekdays, 08:00–20:00)
+    const procTimes = allEligible
+      .filter(o => o.shipped_date)
+      .map(o => workingHoursBetween(o.order_received_at, o.order_date?.slice(0,10), o.shipped_date?.slice(0,10)))
+      .filter(v => v !== null && v >= 0);
+    const avgProc = procTimes.length ? procTimes.reduce((a,b)=>a+b,0) / procTimes.length : null;
+
+    const sameDayPct  = allEligible.length ? (allCompliant.length / allEligible.length * 100) : null;
+    const errRate     = allShipped.length  ? (totalErrOrders / allShipped.length * 100) : null;
+
+    const sameDayCls  = sameDayPct === null ? '' : sameDayPct >= 95 ? 'green' : sameDayPct >= 85 ? 'amber' : 'red';
+    const errCls      = errRate    === null ? 'muted' : errRate <= 1 ? 'green' : errRate <= 3 ? 'amber' : 'red';
+    const errColor    = errRate    === null ? 'var(--muted)' : errRate <= 1 ? 'var(--green)' : errRate <= 3 ? 'var(--amber)' : 'var(--red)';
+    const sdColor     = sameDayPct === null ? 'var(--muted)' : sameDayPct >= 95 ? 'var(--green)' : sameDayPct >= 85 ? 'var(--amber)' : 'var(--red)';
+
+    // Store rows for export
+    window._dispatchOrders = orders;
+
+    let kpiHtml = `
+    <div class="gi-toolbar" style="margin-bottom:16px">
+      <div></div>
+      <button class="btn" onclick="exportDispatch()">↓ Export CSV</button>
+    </div>
+    <div class="gi-kpi-row" style="margin-bottom:20px">
+      <div class="gi-kpi">
+        <div class="gi-kpi-label">Total Orders</div>
+        <div class="gi-kpi-value" style="color:var(--accent)">${orders.length.toLocaleString()}</div>
+        <div class="gi-kpi-sub">${allShipped.length.toLocaleString()} shipped · ${allEligible.length} eligible</div>
+      </div>
+      <div class="gi-kpi muted">
+        <div class="gi-kpi-label">Items Shipped</div>
+        <div class="gi-kpi-value">${totalItemsShipped > 0 ? totalItemsShipped.toLocaleString() : '—'}</div>
+        <div class="gi-kpi-sub">Line items across shipped orders</div>
+      </div>
+      <div class="gi-kpi ${sameDayCls}">
+        <div class="gi-kpi-label">Same Day Dispatch %</div>
+        <div class="gi-kpi-value" style="color:${sdColor}">${sameDayPct !== null ? sameDayPct.toFixed(2) + '%' : '—'}</div>
+        <div class="gi-kpi-sub">${allCompliant.length} of ${allEligible.length} eligible orders</div>
+      </div>
+      <div class="gi-kpi ${errCls}">
+        <div class="gi-kpi-label">Packing Error Rate</div>
+        <div class="gi-kpi-value" style="color:${errColor}">${errRate !== null ? errRate.toFixed(2) + '%' : '—'}</div>
+        <div class="gi-kpi-sub">${totalErrOrders} error order${totalErrOrders !== 1 ? 's' : ''} of ${allShipped.length} shipped</div>
+      </div>
+      <div class="gi-kpi muted">
+        <div class="gi-kpi-label">Avg Processing Time</div>
+        <div class="gi-kpi-value">${avgProc !== null ? (avgProc < 1 ? '<1h' : avgProc < 24 ? avgProc.toFixed(1) + 'h' : (avgProc/12).toFixed(1) + 'd') : '—'}</div>
+        <div class="gi-kpi-sub">Eligible orders · working hrs only</div>
+      </div>
+    </div>`;
+
+    // Group orders by client
+    const byClient = {};
+    orders.forEach(o => {
+      if (!byClient[o.client_name]) byClient[o.client_name] = [];
+      byClient[o.client_name].push(o);
+    });
+
+    let rows = Object.entries(byClient).map(([name, clientOrders]) => {
+      const shipped = clientOrders.filter(o => o.shipped_date);
+      const eligible = clientOrders.filter(o => { const s = effSlaStatus(o); return s === 'compliant' || s === 'late'; });
+      const compliant = eligible.filter(o => effSlaStatus(o) === 'compliant');
+      const errCount = errorsByClient[name] || 0;
+      const errOrders = errorOrdersByClient[name] ? errorOrdersByClient[name].size : 0;
+      const packingAcc = shipped.length ? (((shipped.length - errOrders) / shipped.length) * 100).toFixed(2) : null;
+      const itemsShipped = shipped.reduce((s, o) => s + (parseInt(o.items) || 0), 0);
+      // Processing time: eligible shipped orders only
+      const ptimes = eligible
+        .filter(o => o.shipped_date)
+        .map(o => workingHoursBetween(o.order_received_at, o.order_date?.slice(0,10), o.shipped_date?.slice(0,10)))
+        .filter(v => v !== null && v >= 0);
+      const avgPt = ptimes.length ? ptimes.reduce((a,b)=>a+b,0) / ptimes.length : null;
+      return {
+        _name: name,
+        _total: clientOrders.length,
+        _shipped: shipped.length,
+        _items: itemsShipped,
+        _eligible: eligible.length,
+        _compliantPct: eligible.length ? ((compliant.length/eligible.length)*100).toFixed(2) : null,
+        _errors: errCount,
+        _packingAcc: packingAcc,
+        _avgProc: avgPt,
+      };
+    });
+
+    rows = sortRows(rows, 'dispatch');
+
+    const cols = [
+      {label:'Client',        field:'_name',        fmt: r => clientLink(r._name)},
+      {label:'Total Orders',  field:'_total'},
+      {label:'Shipped',       field:'_shipped'},
+      {label:'Items Shipped', field:'_items',        fmt: r => r._items > 0 ? r._items.toLocaleString() : '<span style="color:var(--muted)">—</span>'},
+      {label:'Eligible',      field:'_eligible'},
+      {label:'Same Day %',    field:'_compliantPct', fmt: r => r._compliantPct !== null ? fmtPctColored(r._compliantPct, 100) : '<span style="color:var(--muted)">—</span>'},
+      {label:'Errors',        field:'_errors',       fmt: r => r._errors > 0 ? `<span style="color:var(--red)">${r._errors}</span>` : `<span style="color:var(--muted)">0</span>`},
+      {label:'Packing Acc %', field:'_packingAcc',   fmt: r => r._packingAcc !== null ? fmtPctColored(r._packingAcc, 100) : '<span style="color:var(--muted)">—</span>'},
+      {label:'Avg Processing',field:'_avgProc',      fmt: r => fmtProcHours(r._avgProc)},
+    ];
+
+    panel.innerHTML = kpiHtml + buildTable('dispatch', cols, rows);
+
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+// ── Returns Tab ───────────────────────────────────────────────────────────────
+// "Avg processing days" = average days from created_date to end of selected period.
+// This measures how long return units have been in the system (proxy for processing time
+// since ShipHero doesn't expose a return completion timestamp).
+async function loadReturns() {
+  const panel = document.getElementById('tab-returns');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [];
+    if (dateFrom) filters.push(['created_date', `gte.${dateFrom}`]);
+    if (dateTo) filters.push(['created_date', `lte.${dateTo}`]);
+
+    const returns = await sbFetchAll('returns', filters, 'id,client_name,created_date,order_number,sku,type,status', 'created_date.desc');
+    window._returnsData = returns;
+
+    // "Avg days to process" = created_date → today, but only for warehouse_complete returns.
+    // Pending returns are counted separately so they don't skew the average.
+    const today = new Date().toISOString().slice(0,10);
+    function returnAgeDays(created_date) {
+      if (!created_date) return null;
+      const d = (new Date(today + 'T23:59:59Z') - new Date(created_date + 'T00:00:00Z')) / 86400000;
+      return d >= 0 ? d : null;
+    }
+
+    // Group by client
+    const byClient = {};
+    returns.forEach(r => {
+      if (!byClient[r.client_name]) byClient[r.client_name] = [];
+      byClient[r.client_name].push(r);
+    });
+
+    let rows = Object.entries(byClient).map(([name, clientReturns]) => {
+      const uniqueOrders = new Set(clientReturns.map(r => r.order_number).filter(Boolean));
+      // Only average warehouse_complete returns; null status (pre-migration) falls back to all
+      const hasStatus = clientReturns.some(r => r.status);
+      const completed = hasStatus ? clientReturns.filter(r => ["complete","warehouse_complete"].includes(r.status)) : clientReturns;
+      const pending   = hasStatus ? clientReturns.filter(r => !["complete","warehouse_complete"].includes(r.status)).length : null;
+      const ageDays = completed.map(r => returnAgeDays(r.created_date)).filter(v => v !== null);
+      const avgDays = ageDays.length > 0 ? ageDays.reduce((a,b) => a+b, 0) / ageDays.length : null;
+      return {
+        _name: name,
+        _events: uniqueOrders.size || clientReturns.length,
+        _items: clientReturns.length,
+        _completed: completed.length,
+        _pending: pending,
+        _avgDays: avgDays,
+      };
+    });
+
+    rows = sortRows(rows, 'returns');
+
+    // Overall KPIs
+    const totalUnits = returns.length;
+    const totalEvents = (() => { const s = new Set(returns.map(r=>r.order_number).filter(Boolean)); return s.size || totalUnits; })();
+    const hasAnyStatus = returns.some(r => r.status);
+    const completedAll = hasAnyStatus ? returns.filter(r => ["complete","warehouse_complete"].includes(r.status)) : returns;
+    const pendingAll   = hasAnyStatus ? returns.filter(r => !["complete","warehouse_complete"].includes(r.status)).length : null;
+    const allAgeDays = completedAll.map(r => returnAgeDays(r.created_date)).filter(v => v !== null);
+    const overallAvg = allAgeDays.length > 0 ? allAgeDays.reduce((a,b) => a+b, 0) / allAgeDays.length : null;
+
+    const kpiHtml = `
+      <div class="kpi-row" style="margin-bottom:20px">
+        <div class="kpi-card"><div class="kpi-val">${totalEvents.toLocaleString()}</div><div class="kpi-lbl">Total Return Events</div></div>
+        <div class="kpi-card"><div class="kpi-val">${totalUnits.toLocaleString()}</div><div class="kpi-lbl">Units Returned</div></div>
+        ${hasAnyStatus ? `<div class="kpi-card"><div class="kpi-val" style="color:var(--green)">${completedAll.length}</div><div class="kpi-lbl">Warehouse Complete</div></div>` : ''}
+        ${hasAnyStatus && pendingAll > 0 ? `<div class="kpi-card"><div class="kpi-val" style="color:var(--amber)">${pendingAll}</div><div class="kpi-lbl">Pending</div></div>` : ''}
+        <div class="kpi-card"><div class="kpi-val">${overallAvg !== null ? overallAvg.toFixed(1)+'d' : '—'}</div><div class="kpi-lbl">Avg Days to Process${hasAnyStatus ? ' (completed)' : ''}</div></div>
+      </div>`;
+
+    const cols = [
+      {label:'Client',            field:'_name',      fmt: r => clientLink(r._name)},
+      {label:'Return Events',     field:'_events'},
+      {label:'Units Returned',    field:'_items'},
+      ...(hasAnyStatus ? [
+        {label:'Completed',  field:'_completed', fmt: r => `<span style="color:var(--green)">${r._completed}</span>`},
+        {label:'Pending',    field:'_pending',   fmt: r => r._pending > 0 ? `<span style="color:var(--amber)">${r._pending}</span>` : `<span style="color:var(--muted)">0</span>`},
+      ] : []),
+      {label:'Avg Days to Process', field:'_avgDays', fmt: r => r._avgDays !== null ? r._avgDays.toFixed(1)+'d' : '—'},
+    ];
+
+    const toolbar = `<div class="gi-toolbar" style="margin-bottom:16px"><div></div><button class="btn" onclick="exportReturns()">↓ Export CSV</button></div>`;
+    panel.innerHTML = kpiHtml + toolbar + buildTable('returns', cols, rows);
+
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+// ── Late Orders Tab ───────────────────────────────────────────────────────────
+let _lateClientFilter = 'All Clients';
+
+async function loadLate() {
+  const panel = document.getElementById('tab-late');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [];
+    if (dateFrom) filters.push(['order_date', `gte.${dateFrom}`]);
+    if (dateTo) filters.push(['order_date', `lte.${dateTo}`]);
+
+    const [orders, exclusions] = await Promise.all([
+      sbFetchAll('orders', filters, 'id,client_name,order_number,order_date,required_ship_date,shipped_date,fulfillment_status,tags,shiphero_url', 'order_date.desc'),
+      sbFetchAll('sla_exclusions', [], 'id,order_number,client_name,reason,excluded_by', null),
+    ]);
+
+    const excludedMap = {};
+    exclusions.forEach(e => { excludedMap[`${e.client_name}:${e.order_number}`] = e; });
+
+    const late = orders.filter(o => slaStatus(o) === 'late' && !excludedMap[`${o.client_name}:${o.order_number}`]);
+    window._lateOrders = late;
+
+    // Update tab badge
+    const btn = document.getElementById('tab-btn-late');
+    if (btn) btn.innerHTML = `Late Orders${late.length > 0 ? `<span class="tab-badge">${late.length}</span>` : ''}`;
+
+    if (late.length === 0) {
+      panel.innerHTML = `<div class="empty-box">No late orders found for this period 🎉</div>`;
+      return;
+    }
+
+    renderLate(late);
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+function renderLate(late) {
+  const panel = document.getElementById('tab-late');
+  const allClients = [...new Set((late).map(o => o.client_name))].sort();
+  const filtered = _lateClientFilter === 'All Clients'
+    ? late
+    : late.filter(o => o.client_name === _lateClientFilter);
+
+  const key = 'late';
+  const cols = [
+    {label:'Client',       field:'client_name',        fmt: r => clientLink(r.client_name)},
+    {label:'Order #',      field:'order_number',        fmt: r => r.shiphero_url ? `<a href="${r.shiphero_url}" target="_blank">${r.order_number}</a>` : r.order_number},
+    {label:'Order Date',   field:'order_date',          fmt: r => fmtDate(r.order_date)},
+    {label:'Required Ship',field:'required_ship_date',  fmt: r => fmtDate(r.required_ship_date)},
+    {label:'Shipped',      field:'shipped_date',        fmt: r => fmtDate(r.shipped_date)},
+    {label:'Days Late',    field:'_daysLate',           fmt: r => `<span style="color:var(--red)">${r._daysLate}d</span>`},
+    {label:'Action',       field:'_action',             fmt: r => `<button class="btn-exclude" onclick="showExclForm('${String(r.client_name).replace(/'/g,"&#39;")}','${String(r.order_number).replace(/'/g,"&#39;")}')">Exclude</button>`},
+  ];
+
+  const lateWithDays = filtered.map(o => {
+    const shipped = effDispatch(o.shipped_date), req = effShip(o.required_ship_date);
+    const days = Math.round((new Date(shipped+'T00:00:00Z') - new Date(req+'T00:00:00Z')) / 86400000);
+    return {...o, _daysLate: days, _action: ''};
+  });
+
+  const sorted = sortRows(lateWithDays, key);
+  const sc = getSortCol(key);
+  const reasonOpts = ['Carrier delay','Stock issue','Customer request','Warehouse error','System error','Other']
+    .map(r => `<option value="${r}">${r}</option>`).join('');
+
+  let html = `
+  <div class="gi-toolbar" style="margin-bottom:8px">
+    <div class="gi-filters">
+      <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Client:</span>
+      <select class="gi-select" onchange="_lateClientFilter=this.value;renderLate(window._lateOrders)">
+        <option${_lateClientFilter==='All Clients'?' selected':''}>All Clients</option>
+        ${allClients.map(c=>`<option${_lateClientFilter===c?' selected':''}>${c}</option>`).join('')}
+      </select>
+      <span style="color:var(--muted);font-size:12px;margin-left:4px">${filtered.length} of ${late.length} order${late.length!==1?'s':''}</span>
+    </div>
+    <button class="btn" onclick="exportLate()">↓ Export CSV</button>
+  </div>
+  <div class="bulk-bar" id="late-bulk-bar" style="display:none">
+    <span class="bulk-bar-count" id="late-sel-count">0 selected</span>
+    <select class="excl-select" id="bulk-excl-reason">
+      <option value="">Select reason…</option>${reasonOpts}
+    </select>
+    <input class="excl-input" id="bulk-excl-notes" placeholder="Comments (optional)" style="width:200px">
+    <input class="excl-input" id="bulk-excl-by" placeholder="Your name" style="width:130px">
+    <button class="btn-bulk-excl" onclick="saveBulkExclusion()">Exclude Selected</button>
+    <button class="btn-bulk-cancel" onclick="clearLateSelection()">Cancel</button>
+  </div>
+  <div class="table-wrap"><table><thead><tr>
+    <th style="width:36px"><input type="checkbox" class="late-check" id="late-check-all" onchange="toggleAllLate(this.checked)" title="Select all"></th>`;
+  cols.forEach((c,i) => {
+    const isSorted = sc && sc.idx === i;
+    html += `<th class="${isSorted?'sorted':''}" onclick="doSort('${key}',${i},${JSON.stringify(c.field)})">${c.label} <span class="sort-icon">${isSorted?(sc.asc?'▲':'▼'):'▲▼'}</span></th>`;
+  });
+  html += `</tr></thead><tbody id="late-tbody">`;
+  sorted.forEach(r => {
+    const esc = s => String(s).replace(/"/g,'&quot;');
+    html += `<tr id="late-row-${r.client_name}-${r.order_number}">`;
+    html += `<td><input type="checkbox" class="late-check row-check" data-client="${esc(r.client_name)}" data-order="${esc(r.order_number)}" onchange="updateLateSelection()"></td>`;
+    cols.forEach(c => { html += `<td>${c.fmt ? c.fmt(r) : (r[c.field] ?? '—')}</td>`; });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  panel.innerHTML = html;
+}
+
+function toggleAllLate(checked) {
+  document.querySelectorAll('#late-tbody .row-check').forEach(cb => cb.checked = checked);
+  updateLateSelection();
+}
+
+function updateLateSelection() {
+  const checked = document.querySelectorAll('#late-tbody .row-check:checked');
+  const total   = document.querySelectorAll('#late-tbody .row-check');
+  const bulkBar = document.getElementById('late-bulk-bar');
+  const countEl = document.getElementById('late-sel-count');
+  const allCb   = document.getElementById('late-check-all');
+  if (bulkBar)  bulkBar.style.display = checked.length > 0 ? 'flex' : 'none';
+  if (countEl)  countEl.textContent = `${checked.length} selected`;
+  if (allCb) {
+    allCb.checked = checked.length === total.length && total.length > 0;
+    allCb.indeterminate = checked.length > 0 && checked.length < total.length;
+  }
+}
+
+function clearLateSelection() {
+  document.querySelectorAll('#late-tbody .row-check').forEach(cb => cb.checked = false);
+  const allCb = document.getElementById('late-check-all');
+  if (allCb) { allCb.checked = false; allCb.indeterminate = false; }
+  updateLateSelection();
+}
+
+async function saveBulkExclusion() {
+  const reason = document.getElementById('bulk-excl-reason')?.value || '';
+  const notes  = document.getElementById('bulk-excl-notes')?.value || '';
+  const by     = document.getElementById('bulk-excl-by')?.value || '';
+  if (!reason) { alert('Please select a reason'); return; }
+
+  const checked = [...document.querySelectorAll('#late-tbody .row-check:checked')];
+  if (!checked.length) return;
+
+  const records = checked.map(cb => ({
+    order_number: cb.dataset.order,
+    client_name:  cb.dataset.client,
+    reason,
+    notes: notes || null,
+    excluded_by: by,
+  }));
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sla_exclusions`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(records),
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+
+    // Remove excluded orders from the cached list and re-render
+    const excludedKeys = new Set(checked.map(cb => `${cb.dataset.client}:${cb.dataset.order}`));
+    window._lateOrders = (window._lateOrders || []).filter(o => !excludedKeys.has(`${o.client_name}:${o.order_number}`));
+
+    const remaining = window._lateOrders.length;
+    const btn = document.getElementById('tab-btn-late');
+    if (btn) btn.innerHTML = `Late Orders${remaining > 0 ? `<span class="tab-badge">${remaining}</span>` : ''}`;
+
+    if (remaining === 0) {
+      document.getElementById('tab-late').innerHTML = `<div class="empty-box">No late orders remaining 🎉</div>`;
+    } else {
+      renderLate(window._lateOrders);
+    }
+  } catch(e) {
+    alert('Failed to save exclusions: ' + e.message);
+  }
+}
+
+function fmtDate(ds) {
+  if (!ds) return '—';
+  const d = new Date(ds + 'T00:00:00Z');
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit', timeZone:'UTC' });
+}
+
+function showExclForm(client, orderNum) {
+  const rowId = `${client}-${orderNum}`;
+  // Remove any existing open form
+  document.querySelectorAll('.excl-form').forEach(r => r.remove());
+
+  const row = document.getElementById(`late-row-${rowId}`);
+  if (!row) return;
+  const colCount = row.cells.length;
+
+  const formRow = document.createElement('tr');
+  formRow.className = 'excl-form';
+  formRow.id = `excl-form-${rowId}`;
+  formRow.innerHTML = `<td colspan="${colCount}">
+    <div class="excl-row">
+      <select class="excl-select" id="excl-reason-${rowId}">
+        <option value="">Select reason…</option>
+        <option>Carrier delay</option>
+        <option>Stock issue</option>
+        <option>Customer request</option>
+        <option>Warehouse error</option>
+        <option>System error</option>
+        <option>Other</option>
+      </select>
+      <input class="excl-input" id="excl-notes-${rowId}" placeholder="Comments (optional)" style="width:200px">
+      <input class="excl-input" id="excl-by-${rowId}" placeholder="Your name" style="width:140px">
+      <button class="excl-save" onclick="saveExclusion('${client}','${orderNum}')">Save</button>
+      <button class="excl-cancel" onclick="cancelExclForm('${rowId}')">Cancel</button>
+    </div>
+  </td>`;
+  row.insertAdjacentElement('afterend', formRow);
+}
+
+function cancelExclForm(rowId) {
+  const f = document.getElementById(`excl-form-${rowId}`);
+  if (f) f.remove();
+}
+
+async function saveExclusion(client, orderNum) {
+  const rowId = `${client}-${orderNum}`;
+  const reason = document.getElementById(`excl-reason-${rowId}`)?.value || '';
+  const notes  = document.getElementById(`excl-notes-${rowId}`)?.value || '';
+  const by     = document.getElementById(`excl-by-${rowId}`)?.value || '';
+  if (!reason) { alert('Please select a reason'); return; }
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sla_exclusions`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ order_number: orderNum, client_name: client, reason, notes: notes || null, excluded_by: by }),
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+
+    // Remove the row and form from the table
+    document.getElementById(`excl-form-${rowId}`)?.remove();
+    document.getElementById(`late-row-${rowId}`)?.remove();
+
+    // Update badge count
+    const remaining = document.querySelectorAll('#late-tbody tr:not(.excl-form)').length;
+    const btn = document.getElementById('tab-btn-late');
+    if (btn) btn.innerHTML = `Late Orders${remaining > 0 ? `<span class="tab-badge">${remaining}</span>` : ''}`;
+    if (remaining === 0) document.getElementById('tab-late').innerHTML = `<div class="empty-box">No late orders remaining 🎉</div>`;
+
+  } catch(e) {
+    alert('Failed to save exclusion: ' + e.message);
+  }
+}
+
+// ── Courier Performance Tab ────────────────────────────────────────────────────
+const CARRIER_NAMES = {
+  'dpd_local':'DPD','dpd':'DPD',
+  'royal_mail':'Royal Mail',
+  'hermes_gb':'Evri','hermes':'Evri','myhermes':'Evri',
+  'fedexcrossborder':'FedEx','fedex':'FedEx',
+  'dhl_parcel_gb':'DHL','dhl':'DHL',
+  'ups':'UPS',
+};
+function carrierDisplayName(code) {
+  return CARRIER_NAMES[(code||'').toLowerCase()] || code || 'Unknown';
+}
+function slaDaysForMethod(code) {
+  if (!code) return 3;
+  const c = code.toLowerCase();
+  if (c.includes('24') || c.includes('next_day') || c.includes('nextday')) return 1;
+  if (c.includes('48')) return 2;
+  if (c.includes('72')) return 3;
+  return 3;
+}
+function isParcelDelivered(p) { return !!p.delivered_at; }
+function isParcelException(p) {
+  const s = (p.latest_status || '').toLowerCase();
+  return s.includes('exception') || s.includes('failed_delivery') || s.includes('delivery_failed') || s.includes('not_delivered');
+}
+function parcelTransitDays(p) {
+  if (!p.shipped_at || !p.delivered_at) return null;
+  const d = (new Date(p.delivered_at) - new Date(p.shipped_at)) / 86400000;
+  return d >= 0 ? d : null;
+}
+function courierPctCell(pct, goodThresh, warnThresh) {
+  if (pct === null || pct === undefined) return '<span style="color:var(--muted)">—</span>';
+  const gt = goodThresh !== undefined ? goodThresh : 95;
+  const wt = warnThresh !== undefined ? warnThresh : 85;
+  const color = pct >= gt ? 'var(--green)' : pct >= wt ? 'var(--amber)' : 'var(--red)';
+  return `<span style="color:${color};font-weight:600">${pct.toFixed(1)}%</span>`;
+}
+
+let _courierClientFilter = 'All Clients';
+
+async function loadCourier() {
+  const panel = document.getElementById('tab-courier');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [];
+    if (dateFrom) filters.push(['shipped_at', `gte.${dateFrom}`]);
+    if (dateTo)   filters.push(['shipped_at', `lte.${dateTo}T23:59:59`]);
+    if (_courierClientFilter !== 'All Clients') filters.push(['brand_name', `eq.${_courierClientFilter}`]);
+
+    const parcels = await sbFetchAll(
+      'sendcloud_parcels', filters,
+      'brand_name,carrier_code,shipping_method_code,shipped_at,delivered_at,latest_status',
+      'shipped_at.desc'
+    );
+
+    if (!parcels.length) {
+      panel.innerHTML = emptyBox('No parcel data found for this period. Import SendCloud CSVs to populate courier metrics.');
+      return;
+    }
+
+    // Aggregate per carrier
+    const byCarrier = {};
+    for (const p of parcels) {
+      const code = (p.carrier_code || 'unknown').toLowerCase();
+      if (!byCarrier[code]) byCarrier[code] = { code, total:0, delivered:0, onTime:0, exceptions:0, transitSum:0, transitCount:0 };
+      const c = byCarrier[code];
+      c.total++;
+      const del = isParcelDelivered(p);
+      if (del) c.delivered++;
+      if (isParcelException(p)) c.exceptions++;
+      const td = parcelTransitDays(p);
+      if (td !== null) { c.transitSum += td; c.transitCount++; }
+      if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) c.onTime++;
+    }
+
+    // Overall KPIs
+    const totalParcels   = parcels.length;
+    const totalDelivered = parcels.filter(isParcelDelivered).length;
+    const totalExceptions= parcels.filter(isParcelException).length;
+    const allTransit     = parcels.map(parcelTransitDays).filter(v => v !== null);
+    const avgTransitAll  = allTransit.length ? allTransit.reduce((a,b)=>a+b,0)/allTransit.length : null;
+    const delPct         = totalParcels ? totalDelivered/totalParcels*100 : 0;
+    const excPct         = totalParcels ? totalExceptions/totalParcels*100 : 0;
+    const allBrands      = [...new Set(parcels.map(p => p.brand_name).filter(Boolean))].sort();
+
+    let html = `
+    <div class="gi-toolbar">
+      <div class="gi-filters">
+        <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Client:</span>
+        <select class="gi-select" onchange="_courierClientFilter=this.value;loadCourier()">
+          <option${_courierClientFilter==='All Clients'?' selected':''}>All Clients</option>
+          ${allBrands.map(b=>`<option${_courierClientFilter===b?' selected':''}>${b}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="gi-kpi-row">
+      <div class="gi-kpi">
+        <div class="gi-kpi-label">Total Parcels</div>
+        <div class="gi-kpi-value" style="color:var(--accent)">${totalParcels.toLocaleString()}</div>
+        <div class="gi-kpi-sub">${Object.keys(byCarrier).length} carrier${Object.keys(byCarrier).length!==1?'s':''}</div>
+      </div>
+      <div class="gi-kpi ${delPct>=95?'green':delPct>=85?'amber':'red'}">
+        <div class="gi-kpi-label">Delivered</div>
+        <div class="gi-kpi-value" style="color:${delPct>=95?'var(--green)':delPct>=85?'var(--amber)':'var(--red)'}">${delPct.toFixed(1)}%</div>
+        <div class="gi-kpi-sub">${totalDelivered.toLocaleString()} of ${totalParcels.toLocaleString()}</div>
+      </div>
+      <div class="gi-kpi muted">
+        <div class="gi-kpi-label">Avg Transit Time</div>
+        <div class="gi-kpi-value">${avgTransitAll !== null ? avgTransitAll.toFixed(1)+'d' : '—'}</div>
+        <div class="gi-kpi-sub">${allTransit.length} parcels with delivery data</div>
+      </div>
+      <div class="gi-kpi ${excPct<=2?'green':excPct<=5?'amber':'red'}">
+        <div class="gi-kpi-label">Exception Rate</div>
+        <div class="gi-kpi-value" style="color:${excPct<=2?'var(--green)':excPct<=5?'var(--amber)':'var(--red)'}">${excPct.toFixed(1)}%</div>
+        <div class="gi-kpi-sub">${totalExceptions} exception${totalExceptions!==1?'s':''}</div>
+      </div>
+    </div>
+
+    <p class="gi-chart-title" style="margin-bottom:12px">Carrier Breakdown</p>
+    <div class="table-wrap"><table><thead><tr>
+      <th>Carrier</th><th>Parcels</th><th>Delivered %</th><th>On-Time %</th><th>Avg Transit</th><th>Exceptions</th><th>Exception %</th>
+    </tr></thead><tbody>`;
+
+    const carrierRows = Object.values(byCarrier).sort((a,b) => b.total - a.total);
+    for (const r of carrierRows) {
+      const dP  = r.total     ? r.delivered/r.total*100 : 0;
+      const otP = r.delivered ? r.onTime/r.delivered*100 : null;
+      const eP  = r.total     ? r.exceptions/r.total*100 : 0;
+      const aT  = r.transitCount ? r.transitSum/r.transitCount : null;
+      html += `<tr>
+        <td style="font-weight:600">${carrierDisplayName(r.code)}</td>
+        <td>${r.total.toLocaleString()}</td>
+        <td>${courierPctCell(dP)}</td>
+        <td>${courierPctCell(otP)}</td>
+        <td>${aT !== null ? aT.toFixed(1)+'d' : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${r.exceptions>0?`<span style="color:var(--red)">${r.exceptions}</span>`:'<span style="color:var(--muted)">0</span>'}</td>
+        <td>${courierPctCell(eP,98,95)}</td>
+      </tr>`;
+    }
+    html += `</tbody></table></div>`;
+
+    // Per-client breakdown when viewing all clients
+    if (_courierClientFilter === 'All Clients' && allBrands.length > 1) {
+      const byBrand = {};
+      for (const p of parcels) {
+        const brand = p.brand_name || 'Unknown';
+        const code  = (p.carrier_code || 'unknown').toLowerCase();
+        const key   = `${brand}|||${code}`;
+        if (!byBrand[key]) byBrand[key] = { brand, code, total:0, delivered:0, onTime:0, exceptions:0, transitSum:0, transitCount:0 };
+        const c = byBrand[key];
+        c.total++;
+        const del = isParcelDelivered(p);
+        if (del) c.delivered++;
+        if (isParcelException(p)) c.exceptions++;
+        const td = parcelTransitDays(p);
+        if (td !== null) { c.transitSum += td; c.transitCount++; }
+        if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) c.onTime++;
+      }
+
+      const brandRows = Object.values(byBrand).sort((a,b) => a.brand.localeCompare(b.brand) || b.total - a.total);
+      html += `<p class="gi-chart-title" style="margin-top:24px;margin-bottom:12px">Per-Client Breakdown</p>
+      <div class="table-wrap"><table><thead><tr>
+        <th>Client</th><th>Carrier</th><th>Parcels</th><th>Delivered %</th><th>On-Time %</th><th>Avg Transit</th><th>Exception %</th>
+      </tr></thead><tbody>`;
+      for (const r of brandRows) {
+        const dP  = r.total     ? r.delivered/r.total*100 : 0;
+        const otP = r.delivered ? r.onTime/r.delivered*100 : null;
+        const eP  = r.total     ? r.exceptions/r.total*100 : 0;
+        const aT  = r.transitCount ? r.transitSum/r.transitCount : null;
+        html += `<tr>
+          <td>${clientLink(r.brand)}</td>
+          <td>${carrierDisplayName(r.code)}</td>
+          <td>${r.total.toLocaleString()}</td>
+          <td>${courierPctCell(dP)}</td>
+          <td>${courierPctCell(otP)}</td>
+          <td>${aT !== null ? aT.toFixed(1)+'d' : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${courierPctCell(eP,98,95)}</td>
+        </tr>`;
+      }
+      html += `</tbody></table></div>`;
+    }
+
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

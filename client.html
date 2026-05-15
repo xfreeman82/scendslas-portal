@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCEND Client Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #000000;
+    --card: #0c0c0c;
+    --card-elev: #161616;
+    --text: #ffffff;
+    --muted: #8c8c8c;
+    --accent: #0abab5;
+    --accent-bright: #2dd4cf;
+    --accent-soft: rgba(10,186,181,0.16);
+    --green: #4ade80;
+    --amber: #f5c451;
+    --red: #f87171;
+    --border: #262626;
+    --border-strong: #3a3a3a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; min-height: 100vh; }
+
+  /* Header */
+  .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; }
+  .header-top { display: flex; align-items: center; gap: 16px; padding: 16px 0 12px; flex-wrap: wrap; }
+  .brand { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: var(--accent); white-space: nowrap; }
+  .back-link { font-size: 12px; color: var(--muted); text-decoration: none; white-space: nowrap; }
+  .back-link:hover { color: var(--accent); }
+  .client-selector { background: var(--card-elev); border: 1px solid var(--border-strong); color: var(--text); font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+  .client-selector:focus { outline: 1px solid var(--accent); }
+  .header-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .date-input { background: var(--card-elev); border: 1px solid var(--border-strong); color: var(--text); font-size: 13px; padding: 6px 10px; border-radius: 4px; }
+  .date-input:focus { outline: 1px solid var(--accent); }
+  .date-label { font-size: 11px; color: var(--muted); }
+  .btn { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 6px 16px; font-size: 13px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--accent-soft); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+  .tab-btn { padding: 12px 20px; font-size: 13px; font-weight: 600; color: var(--muted); background: transparent; border: none; border-bottom: 3px solid transparent; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.15s; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Main */
+  .main { padding: 24px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* KPI Row */
+  .kpi-row { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .kpi-card { background: var(--card); border-top: 3px solid var(--accent); padding: 18px 20px; flex: 1; min-width: 140px; }
+  .kpi-card.green { border-top-color: var(--green); }
+  .kpi-card.amber { border-top-color: var(--amber); }
+  .kpi-card.red { border-top-color: var(--red); }
+  .kpi-card.muted { border-top-color: var(--muted); }
+  .kpi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+  .kpi-value { font-size: 28px; font-weight: 700; line-height: 1; }
+
+  /* Chart */
+  .chart-wrap { background: var(--card); border: 1px solid var(--border); padding: 20px; margin-bottom: 24px; height: 260px; position: relative; }
+  .chart-wrap canvas { max-height: 220px; }
+
+  /* Table */
+  .table-wrap { background: var(--card); border: 1px solid var(--border); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--card-elev); }
+  thead th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr { border-top: 1px solid var(--border); }
+  tbody tr:hover { background: var(--card-elev); }
+  tbody td { padding: 10px 14px; color: var(--text); white-space: nowrap; }
+  tbody td.muted { color: var(--muted); }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-green { background: rgba(74,222,128,0.15); color: var(--green); }
+  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-amber { background: rgba(245,196,81,0.15); color: var(--amber); }
+  .badge-muted { background: rgba(140,140,140,0.15); color: var(--muted); }
+  .badge-accent { background: var(--accent-soft); color: var(--accent-bright); }
+
+  /* States */
+  .spinner-wrap { display: flex; align-items: center; justify-content: center; padding: 60px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box { background: rgba(248,113,113,0.1); border: 1px solid var(--red); color: var(--red); padding: 16px 20px; border-radius: 4px; font-size: 13px; margin-bottom: 16px; }
+  .empty-box { color: var(--muted); text-align: center; padding: 48px 20px; font-size: 14px; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-bright); text-decoration: underline; }
+
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+
+  /* Exclusion */
+  .btn-exclude { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 3px 10px; border-radius: 3px; font-size: 11px; cursor: pointer; }
+  .btn-exclude:hover { border-color: var(--red); color: var(--red); }
+  .excl-form td { background: var(--card-elev) !important; padding: 12px 14px !important; }
+  .excl-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .excl-select, .excl-input { background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); padding: 5px 10px; border-radius: 4px; font-size: 12px; font-family: inherit; }
+  .excl-save { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .excl-save:hover { background: var(--accent-soft); }
+  .excl-cancel { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+
+  /* Calendar */
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cal-nav { display: flex; align-items: center; gap: 12px; }
+  .cal-nav button { background: transparent; border: 1px solid var(--border-strong); color: var(--muted); padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .cal-nav button:hover { border-color: var(--accent); color: var(--accent); }
+  .cal-month-label { font-size: 13px; font-weight: 700; min-width: 120px; text-align: center; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 24px; }
+  .cal-day-label { background: var(--card-elev); padding: 6px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); text-align: center; }
+  .cal-cell { background: var(--card); padding: 6px 8px; min-height: 72px; vertical-align: top; position: relative; }
+  .cal-cell.other-month { background: var(--bg); }
+  .cal-cell.today { background: var(--card-elev); }
+  .cal-date { font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .cal-cell.today .cal-date { color: var(--accent); }
+  .cal-po { display: block; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 2px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+  .cal-po.closed { background: rgba(74,222,128,0.15); color: var(--green); }
+  .cal-po.issue { background: rgba(248,113,113,0.15); color: var(--red); }
+  .cal-po.pending { background: rgba(245,196,81,0.15); color: var(--amber); }
+  .cal-po.other { background: rgba(140,140,140,0.12); color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="brand">SCEND</span>
+    <a href="index.html" class="back-link" id="overviewLink">← Overview</a>
+    <select id="clientSelect" class="client-selector" onchange="onClientChange()">
+    </select>
+    <div class="header-controls">
+      <span class="date-label">From</span>
+      <input type="date" id="dateFrom" class="date-input">
+      <span class="date-label">To</span>
+      <input type="date" id="dateTo" class="date-input">
+      <button class="btn" onclick="applyFilters()">Apply</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('goods-in')">Goods In</button>
+    <button class="tab-btn" onclick="switchTab('dispatch')">Dispatch SLA</button>
+    <button class="tab-btn" onclick="switchTab('returns')">Returns</button>
+    <button class="tab-btn" onclick="switchTab('courier')">Courier Performance</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="tab-goods-in" class="tab-panel active"></div>
+  <div id="tab-dispatch" class="tab-panel"></div>
+  <div id="tab-returns" class="tab-panel"></div>
+  <div id="tab-courier" class="tab-panel"></div>
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://jvdiokascttxrcwfbxww.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2ZGlva2FzY3R0eHJjd2ZieHd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Njk5OTMsImV4cCI6MjA5NDE0NTk5M30.ANQXpY__KcpKKWC22FSgsRY2U4QUUKZqubd5_05sp10';
+const INBOUND_URL = 'https://hook.eu2.make.com/ltc2hhoicek766i8eexa1uxsk2gxh22r';
+
+// Normalise legacy vendor names from Make.com webhook to current canonical names
+const VENDOR_ALIASES = { 'SUPEKEEN': 'SUPERKEEN' };
+function normalizeVendor(name) { return VENDOR_ALIASES[name] || name; }
+
+const CLIENTS = [
+  "BRUNAE BODY","SF - Loop Earplugs","Overmind","ID Tribal Chimp","Bero","Mega Mounts",
+  "Merlins","PDC - Co Pack","Dominusecom","Gud Gummies","Canine Clear","OYO Skincare",
+  "Petgently","SCEND Packaging","EM Pharma","Production Bunker","Paint Like Frida","Podback",
+  "Goal Water","Aeyla","Creative Science","BergHOFF","Cocochoco","Bioflow","Zertus UK","LNDR",
+  "Franc James","Not Basics","The Fox Tan","Lapland UK","Sauce Shop","Monty","My Sunday Ski",
+  "The Uzzle","Motorlens","Fit-Tech","fettle","SUPERKEEN"
+];
+
+// ── UK Working Day Helpers ────────────────────────────────────────────────────
+const UK_BH = new Set([
+  "2025-01-01","2025-04-18","2025-04-21","2025-05-05","2025-05-26","2025-08-25","2025-12-25","2025-12-26",
+  "2026-01-01","2026-04-03","2026-04-06","2026-05-04","2026-05-25","2026-08-31","2026-12-25","2026-12-28",
+]);
+function isNonWorking(ds) {
+  const d = new Date(ds + "T00:00:00Z"), dow = d.getUTCDay();
+  return dow === 0 || dow === 6 || UK_BH.has(ds);
+}
+function effShip(ds) {
+  if (!ds) return ds;
+  let d = new Date(ds + "T00:00:00Z");
+  while (isNonWorking(d.toISOString().slice(0,10))) d.setUTCDate(d.getUTCDate()+1);
+  return d.toISOString().slice(0,10);
+}
+function effDispatch(ds) {
+  if (!ds) return ds;
+  let d = new Date(ds + "T00:00:00Z");
+  while (isNonWorking(d.toISOString().slice(0,10))) d.setUTCDate(d.getUTCDate()-1);
+  return d.toISOString().slice(0,10);
+}
+function slaStatus(order) {
+  const isBackordered = order.fulfillment_status?.toUpperCase() === 'BACKORDERED';
+  const hasBackorderTag = (order.tags || []).some(t => t.toLowerCase().includes('backorder'));
+  if (!order.required_ship_date || isBackordered || hasBackorderTag) return 'ineligible';
+  if (!order.shipped_date) return 'ineligible';
+  return effDispatch(order.shipped_date) <= effShip(order.required_ship_date) ? 'compliant' : 'late';
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+function fmtDate(ds) {
+  if (!ds) return '—';
+  const d = new Date(ds);
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' }).replace(/ /g,' ');
+}
+function fmtHours(h) {
+  if (h === null || h === undefined || h === '') return '—';
+  const n = parseFloat(h);
+  if (isNaN(n)) return '—';
+  if (n < 24) return n % 1 === 0 ? n + 'h' : n.toFixed(1) + 'h';
+  const days = n / 24;
+  return (days % 1 === 0 ? days : days.toFixed(1)) + 'd';
+}
+function fmtPct(n, d) {
+  if (!d) return '—';
+  return ((n / d) * 100).toFixed(2) + '%';
+}
+
+// DTS helper: DockToStockHours from Make.com is in DAYS → ×24.
+// Falls back to DeliveredAt→ClosedAt, then ETA→ClosedAt if null.
+function dtsHours(r) {
+  const raw = parseFloat(r.DockToStockHours);
+  if (!isNaN(raw) && raw > 0) return raw * 24;
+  if (raw === 0) return 0;
+  // Fallback 1: DeliveredAt → ClosedAt
+  if (r.DeliveredAt && r.ClosedAt) {
+    const diff = (new Date(r.ClosedAt) - new Date(r.DeliveredAt)) / 3600000;
+    if (diff >= 0) return diff;
+  }
+  // Fallback 2: DeliveredAt → IssueAt
+  if (r.DeliveredAt && r.IssueAt) {
+    const diff = (new Date(r.IssueAt) - new Date(r.DeliveredAt)) / 3600000;
+    if (diff >= 0) return diff;
+  }
+  // Fallback 3: ETA → ClosedAt
+  if (r.ETA && r.ClosedAt) {
+    const diff = (new Date(r.ClosedAt) - new Date(r.ETA)) / 3600000;
+    if (diff >= 0 && diff < 720) return diff;
+  }
+  // Fallback 4: ETA → actual received date confirmed in this period (from Supabase)
+  if (r.ETA) {
+    const po = (r.PONumber || r.POID || '').trim();
+    const receivedDate = (window._giSbReceivedByPo || {})[po];
+    if (receivedDate) {
+      const diff = (new Date(receivedDate) - new Date(r.ETA)) / 3600000;
+      if (diff >= 0) return diff;
+    }
+  }
+  return null;
+}
+
+// ── Cache ─────────────────────────────────────────────────────────────────────
+let _inboundCache = null;
+
+// ── Supabase Fetch ────────────────────────────────────────────────────────────
+async function sbFetchAll(table, filters, selectCols, orderBy) {
+  const PAGE = 1000;
+  const all = [];
+  let fromRow = 0;
+  while (true) {
+    const params = new URLSearchParams();
+    params.set('select', selectCols);
+    if (orderBy) params.set('order', orderBy);
+    filters.forEach(([k, v]) => params.append(k, v));
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Range': `${fromRow}-${fromRow + PAGE - 1}`,
+        'Range-Unit': 'items',
+      }
+    });
+    if (!res.ok) throw new Error(`Supabase ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error(data.message || 'Bad response');
+    all.push(...data);
+    if (data.length < PAGE) break;
+    fromRow += PAGE;
+  }
+  return all;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let activeTab = 'goods-in';
+let currentClient = '';
+let dateFrom = '';
+let dateTo = '';
+let sortState = {};
+let goodsInChart = null;
+let dispatchChart = null;
+let _calYear = null;
+let _calMonth = null;
+let _calPos = [];
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  // Populate client selector
+  const sel = document.getElementById('clientSelect');
+  CLIENTS.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+
+  // Read URL params — with a 200 rewrite the browser URL stays as /LNDR so
+  // window.location.search is empty; extract client from the path in that case.
+  const params = new URLSearchParams(window.location.search);
+  const pathPart = window.location.pathname.replace(/^\//, '');
+  const clientFromPath = (pathPart && pathPart !== 'client.html')
+    ? decodeURIComponent(pathPart) : null;
+
+  currentClient = params.get('client') || clientFromPath || CLIENTS[0];
+  sel.value = currentClient;
+  console.log('[init] pathname:', window.location.pathname, '| clientFromPath:', clientFromPath, '| currentClient:', currentClient);
+
+  // Locked mode: accessed via /:client path — hide switcher and overview link
+  const locked = params.get('locked') === '1' || clientFromPath !== null;
+  if (locked) {
+    sel.style.display = 'none';
+    const overviewLink = document.getElementById('overviewLink');
+    if (overviewLink) overviewLink.style.display = 'none';
+  }
+
+  // Default dates: first of current month → today (matches main portal)
+  const now = new Date();
+  dateTo = now.toISOString().slice(0,10);
+  dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  document.getElementById('dateFrom').value = dateFrom;
+  document.getElementById('dateTo').value = dateTo;
+
+  loadActiveTab();
+}
+
+function onClientChange() {
+  const sel = document.getElementById('clientSelect');
+  currentClient = sel.value;
+  const url = new URL(window.location);
+  url.searchParams.set('client', currentClient);
+  window.history.replaceState({}, '', url);
+  sortState = {};
+  loadActiveTab();
+}
+
+function applyFilters() {
+  dateFrom = document.getElementById('dateFrom').value;
+  dateTo = document.getElementById('dateTo').value;
+  sortState = {};
+  _calYear = null; _calMonth = null; // reset calendar to new date range
+  loadActiveTab();
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    const tabs = ['goods-in','dispatch','returns','courier'];
+    b.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  loadActiveTab();
+}
+
+function loadActiveTab() {
+  if (activeTab === 'goods-in') loadGoodsIn();
+  else if (activeTab === 'dispatch') loadDispatch();
+  else if (activeTab === 'returns') loadReturns();
+  else if (activeTab === 'courier') loadClientCourier();
+}
+
+// ── Spinner / Error ───────────────────────────────────────────────────────────
+function spinner() {
+  return `<div class="spinner-wrap"><div class="spinner"></div></div>`;
+}
+function errBox(msg) {
+  return `<div class="error-box">Error loading data: ${msg}</div>`;
+}
+function emptyBox(msg) {
+  return `<div class="empty-box">${msg}</div>`;
+}
+
+// ── Goods In Tab ──────────────────────────────────────────────────────────────
+function poDate(r) {
+  // Best date: actual processing date first, then ETA
+  return r.ClosedAt || r.DeliveredAt || r.ETA;
+}
+
+async function loadGoodsIn() {
+  const panel = document.getElementById('tab-goods-in');
+  panel.innerHTML = spinner();
+  try {
+    const from = dateFrom ? new Date(dateFrom + 'T00:00:00Z') : null;
+    const to = dateTo ? new Date(dateTo + 'T23:59:59Z') : null;
+
+    // Fetch webhook (DTS tracking) + Supabase goods_in (received units) in parallel
+    const giFilters = [['client_name', `eq.${currentClient}`]];
+    if (dateFrom) giFilters.push(['received_date', `gte.${dateFrom}`]);
+    if (dateTo)   giFilters.push(['received_date', `lte.${dateTo}`]);
+
+    const [webhookRaw, sbRows] = await Promise.all([
+      _inboundCache
+        ? Promise.resolve(_inboundCache)
+        : fetch(INBOUND_URL).then(r => { if (!r.ok) throw new Error(`Webhook ${r.status}`); return r.json(); }).then(d => {
+            // Normalise legacy vendor names (e.g. SUPEKEEN → SUPERKEEN)
+            d = d.map(r => r.VendorName ? { ...r, VendorName: normalizeVendor(r.VendorName) } : r);
+            _inboundCache = d; return d;
+          }),
+      sbFetchAll('goods_in', giFilters, 'po_number,received_date,sku,units', 'received_date.desc').catch(() => []),
+    ]);
+
+    // Filter webhook to this client + date range
+    const pos = webhookRaw.filter(r => {
+      if (r.VendorName !== currentClient) return false;
+      const ds = poDate(r);
+      if (!ds) return true;
+      const d = new Date(ds);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+
+    // Build period-filtered received date lookup from Supabase (po_number → earliest received_date)
+    const sbReceivedDateByPo = {};
+    sbRows.forEach(row => {
+      const po = (row.po_number || '').trim();
+      if (po && row.received_date) {
+        if (!sbReceivedDateByPo[po] || row.received_date < sbReceivedDateByPo[po])
+          sbReceivedDateByPo[po] = row.received_date;
+      }
+    });
+    window._giSbReceivedByPo = sbReceivedDateByPo;
+
+    // KPIs from webhook (use dtsHours fallback for null DockToStockHours)
+    const dtsValues = pos.map(r => dtsHours(r)).filter(v => v !== null);
+    const avgDts = dtsValues.length ? dtsValues.reduce((a,b)=>a+b,0)/dtsValues.length : null;
+    const within24 = dtsValues.filter(v => v <= 24).length;
+    const within24Pct = dtsValues.length ? within24/dtsValues.length*100 : null;
+    const closed = pos.filter(r => (r.FinalStatus||'').toLowerCase() === 'closed').length;
+    const issues = pos.filter(r => r.FinalStatus === 'issue' || r.IssueAt).length;
+    const pending = pos.length - closed - issues;
+
+    // Units received from Supabase (more reliable than webhook ItemsReceived)
+    const totalUnits = sbRows.reduce((s, r) => s + (parseInt(r.units) || 0), 0);
+    const totalPOs = pos.length || new Set(sbRows.map(r => r.po_number).filter(Boolean)).size;
+
+    let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;flex-wrap:wrap;gap:8px;">
+      <div class="kpi-row" style="margin-bottom:0;flex:1">
+        <div class="kpi-card"><div class="kpi-label">Total POs</div><div class="kpi-value">${totalPOs}</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Avg Dock to Stock</div><div class="kpi-value">${avgDts !== null ? fmtHours(avgDts) : '—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">≤24h Rate</div><div class="kpi-value">${within24Pct !== null ? within24Pct.toFixed(1)+'%' : '—'}</div></div>
+        <div class="kpi-card amber"><div class="kpi-label">Pending</div><div class="kpi-value">${pending > 0 ? pending : 0}</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Issues</div><div class="kpi-value">${issues}</div></div>
+        <div class="kpi-card muted"><div class="kpi-label">Units Received</div><div class="kpi-value">${totalUnits > 0 ? totalUnits.toLocaleString() : '—'}</div></div>
+      </div>
+      <button class="btn" onclick="exportClientGoodsIn()" style="align-self:flex-start;margin-top:4px">↓ Export CSV</button>
+    </div><div style="margin-bottom:24px"></div>`;
+
+    // Chart (only if webhook has DTS data)
+    if (pos.length > 0) {
+      html += `<div class="chart-wrap"><canvas id="dtsChart"></canvas></div>`;
+    }
+
+    // Calendar
+    if (!_calYear) {
+      const d = dateFrom ? new Date(dateFrom + 'T00:00:00Z') : new Date();
+      _calYear = d.getUTCFullYear();
+      _calMonth = d.getUTCMonth();
+    }
+    _calPos = pos;
+    if (pos.length > 0) html += `<div id="gi-calendar"></div>`;
+
+    // Table — use webhook rows if available, otherwise fall back to Supabase rows
+    if (pos.length > 0) {
+      // Webhook view: full tracking detail
+      const key = 'goods-in';
+      const cols = [
+        {label:'PO Number', field:'PONumber', fmt: r => {
+          const id   = r.POID || r.PONumber || '';
+          const label = r.PONumber || r.POID || '—';
+          return id ? `<a href="https://app.shiphero.com/dashboard/purchasing/orders/${id}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${label}</a>` : '—';
+        }},
+        {label:'ETA', field:'ETA', fmt: r => fmtDate(r.ETA)},
+        {label:'Delivered', field:'DeliveredAt', fmt: r => fmtDate(r.DeliveredAt)},
+        {label:'Closed / Issue', field:'ClosedAt', fmt: r => r.IssueAt ? fmtDate(r.IssueAt) : fmtDate(r.ClosedAt)},
+        {label:'Dock to Stock', field:'DockToStockHours', fmt: r => fmtHours(dtsHours(r))},
+        {label:'Items', field:'ItemsReceived', fmt: r => parseInt(r.ItemsReceived)?.toLocaleString() || '—'},
+        {label:'Status', field:'FinalStatus', fmt: r => statusBadge(r.FinalStatus, r.IssueAt)}
+      ];
+      const sorted = sortRows(pos, key, cols);
+      html += `<div class="table-wrap"><table><thead><tr>`;
+      cols.forEach((c,i) => {
+        const sc = getSortCol(key);
+        const isSorted = sc && sc.idx === i;
+        html += `<th class="${isSorted?'sorted':''}" onclick="doSort('${key}',${i},${JSON.stringify(c.field)})">${c.label} <span class="sort-icon">${isSorted ? (sc.asc?'▲':'▼') : '▲▼'}</span></th>`;
+      });
+      html += `</tr></thead><tbody>`;
+      sorted.forEach(r => {
+        html += `<tr>`;
+        cols.forEach(c => { html += `<td>${c.fmt ? c.fmt(r) : (r[c.field] || '—')}</td>`; });
+        html += `</tr>`;
+      });
+      html += `</tbody></table></div>`;
+      window._giClientPos = pos;
+
+    } else if (sbRows.length > 0) {
+      // Supabase fallback: received units by PO
+      const byPo = {};
+      sbRows.forEach(r => {
+        const k = r.po_number || '—';
+        if (!byPo[k]) byPo[k] = { po: k, date: r.received_date, skus: [], units: 0 };
+        byPo[k].skus.push(r.sku);
+        byPo[k].units += parseInt(r.units) || 0;
+      });
+      const poRows = Object.values(byPo).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      html += `<div class="table-wrap"><table><thead><tr>
+        <th>PO Number</th><th>Date Received</th><th>SKUs</th><th>Units</th>
+      </tr></thead><tbody>`;
+      poRows.forEach(r => {
+        const poLink = r.po && r.po !== '—'
+          ? `<a href="https://app.shiphero.com/dashboard/purchasing/orders/${encodeURIComponent(r.po)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${r.po}</a>`
+          : r.po;
+        html += `<tr><td>${poLink}</td><td>${fmtDate(r.date)}</td><td>${r.skus.length}</td><td>${r.units.toLocaleString()}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+      window._giClientPos = sbRows;
+
+    } else {
+      html += `<div class="empty-box">No goods-in records found for this period</div>`;
+      window._giClientPos = [];
+    }
+
+    panel.innerHTML = html;
+    if (pos.length > 0) { renderDtsChart(pos); renderCalendar(); }
+
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+function exportClientGoodsIn() {
+  const rows = window._giClientPos || [];
+  if (!rows.length) return;
+  const headers = ['PO Number','ETA','Delivered At','Closed At','Issue At','Dock to Stock Hours','Items Received','Status'];
+  const lines = [headers.join(',')];
+  rows.forEach(r => {
+    lines.push([
+      JSON.stringify(r.PONumber || r.POID || ''),
+      r.ETA ? r.ETA.slice(0,10) : '',
+      r.DeliveredAt ? r.DeliveredAt.slice(0,10) : '',
+      r.ClosedAt ? r.ClosedAt.slice(0,10) : '',
+      r.IssueAt ? r.IssueAt.slice(0,10) : '',
+      r.DockToStockHours || '',
+      r.ItemsReceived || '',
+      r.FinalStatus || '',
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentClient}-goods-in-${dateFrom}-${dateTo}.csv`;
+  a.click();
+}
+
+function renderCalendar() {
+  const container = document.getElementById('gi-calendar');
+  if (!container) return;
+  const year = _calYear, month = _calMonth;
+  const monthName = new Date(Date.UTC(year, month, 1)).toLocaleDateString('en-GB', {month:'long', year:'numeric', timeZone:'UTC'});
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  // Build date→pos map
+  const byDate = {};
+  _calPos.forEach(p => {
+    const ds = (p.ETA || p.DeliveredAt || '').slice(0,10);
+    if (!ds) return;
+    if (!byDate[ds]) byDate[ds] = [];
+    byDate[ds].push(p);
+  });
+
+  // First day of month (Mon-start: 0=Mon … 6=Sun)
+  const firstDow = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
+  const daysInMonth = new Date(Date.UTC(year, month+1, 0)).getUTCDate();
+  const daysInPrev = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  let html = `<div class="cal-header">
+    <p class="section-title">PO Calendar</p>
+    <div class="cal-nav">
+      <button onclick="calPrev()">← Prev</button>
+      <span class="cal-month-label">${monthName}</span>
+      <button onclick="calNext()">Next →</button>
+    </div>
+  </div>
+  <div class="cal-grid">
+    <div class="cal-day-label">Mon</div><div class="cal-day-label">Tue</div><div class="cal-day-label">Wed</div>
+    <div class="cal-day-label">Thu</div><div class="cal-day-label">Fri</div><div class="cal-day-label">Sat</div><div class="cal-day-label">Sun</div>`;
+
+  // Pad with prev month days
+  for (let i = 0; i < firstDow; i++) {
+    const d = daysInPrev - firstDow + 1 + i;
+    html += `<div class="cal-cell other-month"><div class="cal-date">${d}</div></div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = ds === todayStr;
+    const dayPos = byDate[ds] || [];
+    html += `<div class="cal-cell${isToday?' today':''}"><div class="cal-date">${d}</div>`;
+    dayPos.forEach(p => {
+      const s = (p.FinalStatus||'').toLowerCase();
+      const cls = s==='closed'?'closed':s==='issue'?'issue':(s==='pending'||s==='delivered')?'pending':'other';
+      html += `<span class="cal-po ${cls}" title="${p.PONumber||p.POID} — ${p.FinalStatus||''}">
+        ${p.PONumber||p.POID||'PO'}
+      </span>`;
+    });
+    html += `</div>`;
+  }
+
+  // Pad remaining cells
+  const total = firstDow + daysInMonth;
+  const remaining = (7 - (total % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    html += `<div class="cal-cell other-month"><div class="cal-date">${i}</div></div>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function calPrev() {
+  _calMonth--;
+  if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+  renderCalendar();
+}
+function calNext() {
+  _calMonth++;
+  if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+  renderCalendar();
+}
+
+function statusBadge(status, issueAt) {
+  if (!status) return `<span class="badge badge-muted">Unknown</span>`;
+  const s = status.toLowerCase();
+  if (s === 'closed') return `<span class="badge badge-green">Closed</span>`;
+  if (s === 'issue' || issueAt) return `<span class="badge badge-red">Issue</span>`;
+  if (s === 'pending') return `<span class="badge badge-amber">Pending</span>`;
+  if (s === 'delivered') return `<span class="badge badge-amber">Delivered</span>`;
+  return `<span class="badge badge-muted">${status}</span>`;
+}
+
+function renderDtsChart(pos) {
+  const ctx = document.getElementById('dtsChart');
+  if (!ctx) return;
+  if (goodsInChart) { goodsInChart.destroy(); goodsInChart = null; }
+
+  const labels = pos.map(r => r.PONumber || r.POID);
+  const values = pos.map(r => dtsHours(r) ?? 0);
+  const colors = values.map(v => v <= 24 ? 'rgba(74,222,128,0.7)' : v <= 72 ? 'rgba(245,196,81,0.7)' : 'rgba(248,113,113,0.7)');
+
+  goodsInChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Dock to Stock Hours',
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 0,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const r = pos[elements[0].index];
+        const id = r.POID || r.PONumber;
+        if (id) window.open(`https://app.shiphero.com/dashboard/purchasing/orders/${id}`, '_blank', 'noopener');
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => [fmtHours(ctx.raw), 'Click to open in ShipHero']
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8c8c8c', font: { size: 11 } },
+          grid: { color: '#1a1a1a' },
+        },
+        y: {
+          ticks: { color: '#8c8c8c', font: { size: 11 } },
+          grid: { color: '#1a1a1a' },
+        }
+      },
+      backgroundColor: 'transparent',
+    }
+  });
+  ctx.style.cursor = 'pointer';
+}
+
+// ── Dispatch SLA Tab ──────────────────────────────────────────────────────────
+async function loadDispatch() {
+  const panel = document.getElementById('tab-dispatch');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [
+      ['client_name', `eq.${currentClient}`],
+    ];
+    if (dateFrom) filters.push(['order_date', `gte.${dateFrom}`]);
+    if (dateTo) filters.push(['order_date', `lte.${dateTo}`]);
+
+    const [orders, errors, exclusions] = await Promise.all([
+      sbFetchAll('orders', filters, 'id,client_name,order_number,order_date,required_ship_date,shipped_date,fulfillment_status,tags,tracking_number,shiphero_url', 'order_date.desc'),
+      sbFetchAll('packing_errors', [['client_name', `eq.${currentClient}`]], 'id,order_number,client_name,error_type,notes,logged_by,logged_at', null),
+      sbFetchAll('sla_exclusions', [['client_name', `eq.${currentClient}`]], 'id,order_number,reason,excluded_by', null),
+    ]);
+    const excludedMap = {};
+    exclusions.forEach(e => { excludedMap[e.order_number] = e; });
+
+    // Filter packing errors by date if needed
+    const errorsByOrder = {};
+    errors.forEach(e => {
+      if (!errorsByOrder[e.order_number]) errorsByOrder[e.order_number] = 0;
+      errorsByOrder[e.order_number]++;
+    });
+
+    // KPIs
+    function effSla(o) {
+      if (excludedMap[o.order_number]) return 'excluded';
+      return slaStatus(o);
+    }
+    const shipped = orders.filter(o => o.shipped_date);
+    const eligible = orders.filter(o => { const s = effSla(o); return s === 'compliant' || s === 'late'; });
+    const compliant = eligible.filter(o => effSla(o) === 'compliant');
+    const totalErrors = errors.length;
+    const packingAcc = shipped.length ? ((shipped.length - Object.keys(errorsByOrder).length) / shipped.length) : null;
+
+    let html = `<div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Total Shipped</div><div class="kpi-value">${shipped.length}</div></div>
+      <div class="kpi-card muted"><div class="kpi-label">Dispatch Eligible</div><div class="kpi-value">${eligible.length}</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Dispatch %</div><div class="kpi-value">${fmtPct(compliant.length, eligible.length)}</div></div>
+      <div class="kpi-card amber"><div class="kpi-label">Packing Accuracy %</div><div class="kpi-value">${packingAcc !== null ? (packingAcc*100).toFixed(2)+'%' : '—'}</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Errors Logged</div><div class="kpi-value">${totalErrors}</div></div>
+    </div>`;
+
+    html += `<div class="chart-wrap"><canvas id="dispatchChart"></canvas></div>`;
+
+    const key = 'dispatch';
+    const cols = [
+      {label:'Order #', field:'order_number', fmt: r => r.shiphero_url ? `<a href="${r.shiphero_url}" target="_blank">${r.order_number}</a>` : r.order_number},
+      {label:'Order Date', field:'order_date', fmt: r => fmtDate(r.order_date)},
+      {label:'Required Ship', field:'required_ship_date', fmt: r => fmtDate(r.required_ship_date)},
+      {label:'Shipped', field:'shipped_date', fmt: r => fmtDate(r.shipped_date)},
+      {label:'Status', field:'_sla', fmt: r => {
+        if (r._excl) return `<span class="badge badge-muted" title="Excluded: ${r._excl.reason || ''}">Excluded</span>`;
+        return slaBadge(r._sla);
+      }},
+      {label:'Errors', field:'_errors', fmt: r => {
+        const cnt = errorsByOrder[r.order_number] || 0;
+        return cnt > 0 ? `<span style="color:var(--red)">${cnt}</span>` : `<span style="color:var(--muted)">0</span>`;
+      }},
+      {label:'', field:'_action', fmt: r => {
+        if (r._excl) return `<button class="btn-exclude" style="color:var(--accent);border-color:var(--accent)" onclick="removeExclusion('${r._excl.id}','${r.order_number}')">Re-include</button>`;
+        if (r._sla === 'late') return `<button class="btn-exclude" onclick="showClientExclForm('${r.order_number}')">Exclude</button>`;
+        return '';
+      }},
+    ];
+
+    // For sorting, attach sla to each order
+    const ordersWithSla = orders.map(o => ({...o, _sla: effSla(o), _errors: errorsByOrder[o.order_number] || 0, _excl: excludedMap[o.order_number] || null}));
+    const sorted = sortRows(ordersWithSla, key, cols);
+
+    html += `<div class="table-wrap"><table><thead><tr>`;
+    cols.forEach((c,i) => {
+      const sc = getSortCol(key);
+      const isSorted = sc && sc.idx === i;
+      html += `<th class="${isSorted?'sorted':''}" onclick="doSort('${key}',${i},${JSON.stringify(c.field)})">${c.label} <span class="sort-icon">${isSorted ? (sc.asc?'▲':'▼') : '▲▼'}</span></th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    if (sorted.length === 0) {
+      html += `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted);padding:40px">No orders found for this period</td></tr>`;
+    } else {
+      sorted.forEach(r => {
+        const rowStyle = r._excl ? ' style="opacity:0.5"' : '';
+        html += `<tr data-order="${r.order_number}"${rowStyle}>`;
+        cols.forEach(c => {
+          const val = c.fmt ? c.fmt(r) : (r[c.field] ?? '—');
+          html += `<td>${val}</td>`;
+        });
+        html += `</tr>`;
+      });
+    }
+    html += `</tbody></table></div>`;
+
+    panel.innerHTML = html;
+    renderDispatchChart(ordersWithSla);
+
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+function renderDispatchChart(orders) {
+  const ctx = document.getElementById('dispatchChart');
+  if (!ctx) return;
+  if (dispatchChart) { dispatchChart.destroy(); dispatchChart = null; }
+
+  // Group by order_date
+  const byDay = {};
+  orders.forEach(o => {
+    const d = o.order_date;
+    if (!d) return;
+    if (!byDay[d]) byDay[d] = { compliant: 0, late: 0, ineligible: 0 };
+    byDay[d][o._sla]++;
+  });
+  const days = Object.keys(byDay).sort();
+  if (!days.length) return;
+
+  dispatchChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days.map(d => fmtDate(d)),
+      datasets: [
+        { label: 'Compliant', data: days.map(d => byDay[d].compliant), backgroundColor: 'rgba(74,222,128,0.7)', borderWidth: 0, borderRadius: 2 },
+        { label: 'Late',      data: days.map(d => byDay[d].late),      backgroundColor: 'rgba(248,113,113,0.7)', borderWidth: 0, borderRadius: 2 },
+        { label: 'Ineligible',data: days.map(d => byDay[d].ineligible),backgroundColor: 'rgba(60,60,60,0.7)',    borderWidth: 0, borderRadius: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#8c8c8c', font: { size: 11 } } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#8c8c8c', font: { size: 10 }, maxRotation: 45 }, grid: { color: '#1a1a1a' } },
+        y: { stacked: true, ticks: { color: '#8c8c8c', font: { size: 11 } }, grid: { color: '#1a1a1a' } }
+      }
+    }
+  });
+}
+
+function slaBadge(status) {
+  if (status === 'compliant') return `<span class="badge badge-green">Compliant</span>`;
+  if (status === 'late') return `<span class="badge badge-red">Late</span>`;
+  return `<span class="badge badge-muted">Ineligible</span>`;
+}
+
+// ── Returns Tab ───────────────────────────────────────────────────────────────
+async function loadReturns() {
+  const panel = document.getElementById('tab-returns');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [
+      ['client_name', `eq.${currentClient}`],
+    ];
+    if (dateFrom) filters.push(['created_date', `gte.${dateFrom}`]);
+    if (dateTo) filters.push(['created_date', `lte.${dateTo}`]);
+
+    const returns = await sbFetchAll('returns', filters, 'id,client_name,created_date,order_number,sku,type,status,rate,total', 'created_date.desc');
+
+    const totalReturns = returns.length;
+    const firstReturns = returns.filter(r => r.type === 'first_return').length;
+    const todayMs = Date.now();
+
+    // If status data exists, only average warehouse_complete returns
+    const hasStatus = returns.some(r => r.status);
+    const completed = hasStatus ? returns.filter(r => ["complete","warehouse_complete"].includes(r.status)) : returns;
+    const pendingCount = hasStatus ? returns.filter(r => !["complete","warehouse_complete"].includes(r.status)).length : null;
+    const elapsedDays = completed.map(r => {
+      const d = new Date(r.created_date + 'T00:00:00Z');
+      return Math.floor((todayMs - d.getTime()) / 86400000);
+    });
+    const avgElapsed = elapsedDays.length ? Math.round(elapsedDays.reduce((a,b)=>a+b,0)/elapsedDays.length) : null;
+
+    let html = `<div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Return Events</div><div class="kpi-value">${firstReturns}</div></div>
+      <div class="kpi-card muted"><div class="kpi-label">Total Items</div><div class="kpi-value">${totalReturns}</div></div>
+      ${hasStatus ? `<div class="kpi-card green"><div class="kpi-label">Warehouse Complete</div><div class="kpi-value">${completed.length}</div></div>` : ''}
+      ${hasStatus && pendingCount > 0 ? `<div class="kpi-card amber"><div class="kpi-label">Pending</div><div class="kpi-value">${pendingCount}</div></div>` : ''}
+      <div class="kpi-card amber"><div class="kpi-label">Avg Days to Process${hasStatus ? ' (completed)' : ''}</div><div class="kpi-value">${avgElapsed !== null ? avgElapsed+'d' : '—'}</div></div>
+    </div>`;
+
+    const key = 'returns';
+    const cols = [
+      {label:'Date', field:'created_date', fmt: r => fmtDate(r.created_date)},
+      {label:'Order #', field:'order_number'},
+      {label:'SKU', field:'sku'},
+      {label:'Type', field:'type', fmt: r => typeBadge(r.type)},
+      ...(hasStatus ? [{label:'Status', field:'status', fmt: r => {
+        if (!r.status) return '<span style="color:var(--muted)">—</span>';
+        if (["complete","warehouse_complete"].includes(r.status)) return '<span class="badge badge-green">Complete</span>';
+        return `<span class="badge badge-amber">${r.status}</span>`;
+      }}] : []),
+      {label:'Days Open', field:'_elapsed', fmt: r => {
+        const d = new Date(r.created_date + 'T00:00:00Z');
+        const days = Math.floor((todayMs - d.getTime()) / 86400000);
+        return `<span style="color:${days>30?'var(--amber)':days>60?'var(--red)':'var(--muted)'}">${days}d</span>`;
+      }},
+    ];
+
+    const returnsWithElapsed = returns.map(r => {
+      const d = new Date(r.created_date + 'T00:00:00Z');
+      return {...r, _elapsed: Math.floor((todayMs - d.getTime()) / 86400000)};
+    });
+
+    const sorted = sortRows(returnsWithElapsed, key, cols);
+
+    html += `<div class="table-wrap"><table><thead><tr>`;
+    cols.forEach((c,i) => {
+      const sc = getSortCol(key);
+      const isSorted = sc && sc.idx === i;
+      html += `<th class="${isSorted?'sorted':''}" onclick="doSort('${key}',${i},${JSON.stringify(c.field)})">${c.label} <span class="sort-icon">${isSorted ? (sc.asc?'▲':'▼') : '▲▼'}</span></th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    if (sorted.length === 0) {
+      html += `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--muted);padding:40px">No returns found for this period</td></tr>`;
+    } else {
+      sorted.forEach(r => {
+        html += `<tr>`;
+        cols.forEach(c => {
+          const val = c.fmt ? c.fmt(r) : (r[c.field] ?? '—');
+          html += `<td>${val}</td>`;
+        });
+        html += `</tr>`;
+      });
+    }
+    html += `</tbody></table></div>`;
+
+    panel.innerHTML = html;
+
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+function typeBadge(type) {
+  if (!type) return `<span class="badge badge-muted">—</span>`;
+  if (type === 'first_return') return `<span class="badge badge-accent">First Return</span>`;
+  if (type === 'return_remainder') return `<span class="badge badge-muted">Extra</span>`;
+  return `<span class="badge badge-muted">${type}</span>`;
+}
+
+// ── Sorting ───────────────────────────────────────────────────────────────────
+function getSortCol(key) {
+  return sortState[key] || null;
+}
+
+function doSort(key, idx, field) {
+  const sc = sortState[key];
+  if (sc && sc.idx === idx) {
+    sortState[key] = { idx, field, asc: !sc.asc };
+  } else {
+    sortState[key] = { idx, field, asc: true };
+  }
+  loadActiveTab();
+}
+
+function sortRows(rows, key, cols) {
+  const sc = sortState[key];
+  if (!sc) return [...rows];
+  const sorted = [...rows].sort((a, b) => {
+    let av = a[sc.field], bv = b[sc.field];
+    if (av == null) av = '';
+    if (bv == null) bv = '';
+    // numeric?
+    if (!isNaN(parseFloat(av)) && !isNaN(parseFloat(bv))) {
+      return sc.asc ? parseFloat(av) - parseFloat(bv) : parseFloat(bv) - parseFloat(av);
+    }
+    av = String(av).toLowerCase();
+    bv = String(bv).toLowerCase();
+    return sc.asc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  return sorted;
+}
+
+// ── SLA Exclusions ────────────────────────────────────────────────────────────
+function showClientExclForm(orderNum) {
+  document.querySelectorAll('.excl-form').forEach(r => r.remove());
+  const row = document.querySelector(`tr[data-order="${orderNum}"]`);
+  if (!row) return;
+  const formRow = document.createElement('tr');
+  formRow.className = 'excl-form';
+  formRow.innerHTML = `<td colspan="99">
+    <div class="excl-row">
+      <select class="excl-select" id="excl-reason-${orderNum}">
+        <option value="">Select reason…</option>
+        <option>Carrier delay</option>
+        <option>Stock issue</option>
+        <option>Customer request</option>
+        <option>Warehouse error</option>
+        <option>System error</option>
+        <option>Other</option>
+      </select>
+      <input class="excl-input" id="excl-by-${orderNum}" placeholder="Your name" style="width:140px">
+      <button class="excl-save" onclick="saveClientExclusion('${orderNum}')">Save</button>
+      <button class="excl-cancel" onclick="this.closest('.excl-form').remove()">Cancel</button>
+    </div>
+  </td>`;
+  row.insertAdjacentElement('afterend', formRow);
+}
+
+async function saveClientExclusion(orderNum) {
+  const reason = document.getElementById(`excl-reason-${orderNum}`)?.value || '';
+  const by = document.getElementById(`excl-by-${orderNum}`)?.value || '';
+  if (!reason) { alert('Please select a reason'); return; }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sla_exclusions`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ order_number: orderNum, client_name: currentClient, reason, excluded_by: by }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    loadDispatch(); // reload to reflect updated %
+  } catch(e) {
+    alert('Failed to save: ' + e.message);
+  }
+}
+
+async function removeExclusion(exclId, orderNum) {
+  if (!confirm(`Re-include order ${orderNum} in SLA calculations?`)) return;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/sla_exclusions?id=eq.${exclId}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    loadDispatch();
+  } catch(e) {
+    alert('Failed to remove exclusion: ' + e.message);
+  }
+}
+
+// ── Courier Performance Tab (Client) ──────────────────────────────────────────
+const CARRIER_NAMES = {
+  'dpd_local':'DPD','dpd':'DPD',
+  'royal_mail':'Royal Mail',
+  'hermes_gb':'Evri','hermes':'Evri','myhermes':'Evri',
+  'fedexcrossborder':'FedEx','fedex':'FedEx',
+  'dhl_parcel_gb':'DHL','dhl':'DHL',
+  'ups':'UPS',
+};
+function carrierDisplayName(code) {
+  return CARRIER_NAMES[(code||'').toLowerCase()] || code || 'Unknown';
+}
+function slaDaysForMethod(code) {
+  if (!code) return 3;
+  const c = code.toLowerCase();
+  if (c.includes('24') || c.includes('next_day') || c.includes('nextday')) return 1;
+  if (c.includes('48')) return 2;
+  if (c.includes('72')) return 3;
+  return 3;
+}
+function isParcelDelivered(p) { return !!p.delivered_at; }
+function isParcelException(p) {
+  const s = (p.latest_status || '').toLowerCase();
+  return s.includes('exception') || s.includes('failed_delivery') || s.includes('delivery_failed') || s.includes('not_delivered');
+}
+function parcelTransitDays(p) {
+  if (!p.shipped_at || !p.delivered_at) return null;
+  const d = (new Date(p.delivered_at) - new Date(p.shipped_at)) / 86400000;
+  return d >= 0 ? d : null;
+}
+function courierPctCell(pct, goodThresh, warnThresh) {
+  if (pct === null || pct === undefined) return '<span style="color:var(--muted)">—</span>';
+  const gt = goodThresh !== undefined ? goodThresh : 95;
+  const wt = warnThresh !== undefined ? warnThresh : 85;
+  const color = pct >= gt ? 'var(--green)' : pct >= wt ? 'var(--amber)' : 'var(--red)';
+  return `<span style="color:${color};font-weight:600">${pct.toFixed(1)}%</span>`;
+}
+
+async function loadClientCourier() {
+  const panel = document.getElementById('tab-courier');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [['brand_name', `eq.${currentClient}`]];
+    if (dateFrom) filters.push(['shipped_at', `gte.${dateFrom}`]);
+    if (dateTo)   filters.push(['shipped_at', `lte.${dateTo}T23:59:59`]);
+
+    const parcels = await sbFetchAll(
+      'sendcloud_parcels', filters,
+      'carrier_code,shipping_method_code,shipped_at,delivered_at,latest_status',
+      'shipped_at.desc'
+    );
+
+    if (!parcels.length) {
+      panel.innerHTML = emptyBox('No parcel data found for this period.');
+      return;
+    }
+
+    // Aggregate per carrier
+    const byCarrier = {};
+    for (const p of parcels) {
+      const code = (p.carrier_code || 'unknown').toLowerCase();
+      if (!byCarrier[code]) byCarrier[code] = { code, total:0, delivered:0, onTime:0, exceptions:0, transitSum:0, transitCount:0 };
+      const c = byCarrier[code];
+      c.total++;
+      const del = isParcelDelivered(p);
+      if (del) c.delivered++;
+      if (isParcelException(p)) c.exceptions++;
+      const td = parcelTransitDays(p);
+      if (td !== null) { c.transitSum += td; c.transitCount++; }
+      if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) c.onTime++;
+    }
+
+    const totalParcels    = parcels.length;
+    const totalDelivered  = parcels.filter(isParcelDelivered).length;
+    const totalExceptions = parcels.filter(isParcelException).length;
+    const allTransit      = parcels.map(parcelTransitDays).filter(v => v !== null);
+    const avgTransitAll   = allTransit.length ? allTransit.reduce((a,b)=>a+b,0)/allTransit.length : null;
+    const totalOnTime     = Object.values(byCarrier).reduce((s,c)=>s+c.onTime, 0);
+    const delPct          = totalParcels ? totalDelivered/totalParcels*100 : 0;
+    const otPct           = totalDelivered ? totalOnTime/totalDelivered*100 : null;
+    const excPct          = totalParcels ? totalExceptions/totalParcels*100 : 0;
+
+    let html = `<div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Parcels</div>
+        <div class="kpi-value" style="color:var(--accent)">${totalParcels.toLocaleString()}</div>
+      </div>
+      <div class="kpi-card ${delPct>=95?'green':delPct>=85?'amber':'red'}">
+        <div class="kpi-label">Delivered</div>
+        <div class="kpi-value" style="color:${delPct>=95?'var(--green)':delPct>=85?'var(--amber)':'var(--red)'}">${delPct.toFixed(1)}%</div>
+      </div>
+      <div class="kpi-card ${otPct===null?'muted':otPct>=95?'green':otPct>=85?'amber':'red'}">
+        <div class="kpi-label">On-Time %</div>
+        <div class="kpi-value">${otPct !== null ? otPct.toFixed(1)+'%' : '—'}</div>
+      </div>
+      <div class="kpi-card muted">
+        <div class="kpi-label">Avg Transit</div>
+        <div class="kpi-value">${avgTransitAll !== null ? avgTransitAll.toFixed(1)+'d' : '—'}</div>
+      </div>
+      <div class="kpi-card ${excPct<=2?'green':excPct<=5?'amber':'red'}">
+        <div class="kpi-label">Exception Rate</div>
+        <div class="kpi-value" style="color:${excPct<=2?'var(--green)':excPct<=5?'var(--amber)':'var(--red)'}">${excPct.toFixed(1)}%</div>
+      </div>
+    </div>`;
+
+    html += `<p class="section-title" style="margin-bottom:12px">Carrier Breakdown</p>
+    <div class="table-wrap"><table><thead><tr>
+      <th>Carrier</th><th>Parcels</th><th>Delivered %</th><th>On-Time %</th><th>Avg Transit</th><th>Exceptions</th><th>Exception %</th>
+    </tr></thead><tbody>`;
+
+    const carrierRows = Object.values(byCarrier).sort((a,b) => b.total - a.total);
+    for (const r of carrierRows) {
+      const dP  = r.total     ? r.delivered/r.total*100 : 0;
+      const otP = r.delivered ? r.onTime/r.delivered*100 : null;
+      const eP  = r.total     ? r.exceptions/r.total*100 : 0;
+      const aT  = r.transitCount ? r.transitSum/r.transitCount : null;
+      html += `<tr>
+        <td style="font-weight:600">${carrierDisplayName(r.code)}</td>
+        <td>${r.total.toLocaleString()}</td>
+        <td>${courierPctCell(dP)}</td>
+        <td>${courierPctCell(otP)}</td>
+        <td>${aT !== null ? aT.toFixed(1)+'d' : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${r.exceptions>0?`<span style="color:var(--red)">${r.exceptions}</span>`:'<span style="color:var(--muted)">0</span>'}</td>
+        <td>${courierPctCell(eP,98,95)}</td>
+      </tr>`;
+    }
+    html += `</tbody></table></div>`;
+
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
