@@ -7,59 +7,75 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #000000;
-    --card: #0c0c0c;
-    --card-elev: #161616;
-    --text: #ffffff;
-    --muted: #8c8c8c;
-    --accent: #0abab5;
-    --accent-bright: #2dd4cf;
-    --accent-soft: rgba(10,186,181,0.16);
-    --green: #4ade80;
-    --amber: #f5c451;
-    --red: #f87171;
-    --border: #262626;
-    --border-strong: #3a3a3a;
+    --bg: #f3f4f6;
+    --card: #ffffff;
+    --card-elev: #f9fafb;
+    --text: #111827;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-bright: #3b82f6;
+    --accent-soft: rgba(37,99,235,0.08);
+    --green: #16a34a;
+    --amber: #d97706;
+    --red: #dc2626;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --sidebar-bg: #ffffff;
+    --sidebar-w: 60px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; min-height: 100vh; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; min-height: 100vh; }
 
-  /* Header */
-  .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; }
-  .header-top { display: flex; align-items: center; gap: 16px; padding: 16px 0 12px; flex-wrap: wrap; }
-  .brand { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: var(--accent); white-space: nowrap; }
-  .brand-sub { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); white-space: nowrap; }
-  .header-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
-  .date-input { background: var(--card-elev); border: 1px solid var(--border-strong); color: var(--text); font-size: 13px; padding: 6px 10px; border-radius: 4px; }
-  .date-input:focus { outline: 1px solid var(--accent); }
+  /* Shell layout */
+  .shell { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { width: var(--sidebar-w); background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow: visible; }
+  .sidebar-logo { padding: 16px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+  .brand { font-size: 16px; font-weight: 900; letter-spacing: 1px; color: var(--accent); }
+  .brand-sub { display: none; }
+  .sidebar-nav { padding: 10px 8px; flex: 1; }
+  .nav-item { display: flex; align-items: center; justify-content: center; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; user-select: none; transition: background 0.12s, color 0.12s; margin-bottom: 4px; border: none; background: transparent; width: 100%; position: relative; }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent); }
+  .nav-item svg { flex-shrink: 0; opacity: 0.75; width: 20px; height: 20px; }
+  .nav-item.active svg { opacity: 1; }
+  .nav-label { display: none; }
+  .tab-badge { position: absolute; top: 4px; right: 4px; background: var(--red); color: #fff; border-radius: 10px; font-size: 9px; font-weight: 700; padding: 1px 5px; }
+  .nav-item[title]:hover::after { content: attr(title); position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%); background: #1f2937; color: #fff; font-size: 12px; font-weight: 500; padding: 5px 10px; border-radius: 6px; white-space: nowrap; pointer-events: none; z-index: 100; }
+  .sidebar-footer { padding: 8px 8px 12px; border-top: 1px solid var(--border); }
+  .client-link { display: flex; align-items: center; justify-content: center; padding: 10px; border-radius: 8px; font-size: 16px; color: var(--muted); text-decoration: none; transition: background 0.12s, color 0.12s; }
+  .client-link:hover { background: var(--bg); color: var(--accent); text-decoration: none; }
+
+  /* Content area */
+  .content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* Topbar */
+  .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 16px; min-height: 56px; flex-wrap: wrap; }
+  .topbar-title { font-size: 15px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .topbar-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; padding: 8px 0; }
+  .date-input { background: var(--card); border: 1px solid var(--border-strong); color: var(--text); font-size: 13px; padding: 6px 10px; border-radius: 6px; }
+  .date-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   .date-label { font-size: 11px; color: var(--muted); }
-  .btn { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 6px 16px; font-size: 13px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
-  .btn:hover { background: var(--accent-soft); }
-  .client-link { font-size: 12px; color: var(--muted); text-decoration: none; white-space: nowrap; }
-  .client-link:hover { color: var(--accent); }
-
-  /* Tabs */
-  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
-  .tab-btn { padding: 12px 20px; font-size: 13px; font-weight: 600; color: var(--muted); background: transparent; border: none; border-bottom: 3px solid transparent; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.15s; }
-  .tab-btn:hover { color: var(--text); }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .btn { background: var(--accent); color: #fff; border: none; padding: 7px 16px; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; white-space: nowrap; transition: background 0.12s; }
+  .btn:hover { background: var(--accent-bright); }
 
   /* Main */
-  .main { padding: 24px; }
+  .main { padding: 16px 20px; flex: 1; }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
   /* Table */
-  .table-wrap { background: var(--card); border: 1px solid var(--border); overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
   thead tr { background: var(--card-elev); }
-  thead th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th { padding: 11px 16px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); white-space: nowrap; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); }
   thead th:hover { color: var(--text); }
   thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
   thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
   tbody tr { border-top: 1px solid var(--border); }
-  tbody tr:hover { background: var(--card-elev); }
-  tbody td { padding: 10px 14px; color: var(--text); white-space: nowrap; }
+  tbody tr:hover { background: #f8f9ff; }
+  tbody td { padding: 11px 16px; color: var(--text); white-space: nowrap; }
 
   /* Pct colors */
   .pct-green { color: var(--green); font-weight: 600; }
@@ -70,7 +86,7 @@
   .spinner-wrap { display: flex; align-items: center; justify-content: center; padding: 60px; }
   .spinner { width: 36px; height: 36px; border: 3px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .error-box { background: rgba(248,113,113,0.1); border: 1px solid var(--red); color: var(--red); padding: 16px 20px; border-radius: 4px; font-size: 13px; margin-bottom: 16px; }
+  .error-box { background: #fef2f2; border: 1px solid #fecaca; color: var(--red); padding: 16px 20px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
   .empty-box { color: var(--muted); text-align: center; padding: 48px 20px; font-size: 14px; }
 
   a { color: var(--accent); text-decoration: none; }
@@ -78,44 +94,43 @@
 
   /* Bulk selection */
   .late-check { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
-  .bulk-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--accent-soft); border: 1px solid var(--accent); padding: 10px 16px; margin-bottom: 12px; border-radius: 4px; }
+  .bulk-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--accent-soft); border: 1px solid #bfdbfe; padding: 10px 16px; margin-bottom: 12px; border-radius: 8px; }
   .bulk-bar-count { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; margin-right: 4px; }
-  .btn-bulk-excl { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 5px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .btn-bulk-excl { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
   .btn-bulk-excl:hover { background: var(--accent-soft); }
-  .btn-bulk-cancel { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
-  .btn-bulk-cancel:hover { color: var(--red); border-color: var(--red); }
+  .btn-bulk-cancel { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .btn-bulk-cancel:hover { color: var(--red); border-color: #fca5a5; }
 
   /* Exclusion form */
   .excl-form td { background: var(--card-elev) !important; padding: 12px 14px !important; }
   .excl-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .excl-select, .excl-input { background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); padding: 5px 10px; border-radius: 4px; font-size: 12px; font-family: inherit; }
-  .excl-select:focus, .excl-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
-  .excl-save { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .excl-select, .excl-input { background: var(--card); border: 1px solid var(--border-strong); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; font-family: inherit; }
+  .excl-select:focus, .excl-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .excl-save { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
   .excl-save:hover { background: var(--accent-soft); }
-  .excl-cancel { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
-  .excl-cancel:hover { border-color: var(--red); color: var(--red); }
-  .btn-exclude { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 3px 10px; border-radius: 3px; font-size: 11px; cursor: pointer; }
-  .btn-exclude:hover { border-color: var(--red); color: var(--red); }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
-  .badge-muted { background: rgba(140,140,140,0.15); color: var(--muted); }
-  .tab-badge { display: inline-block; background: var(--red); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+  .excl-cancel { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .excl-cancel:hover { border-color: #fca5a5; color: var(--red); }
+  .btn-exclude { border: 1px solid var(--border-strong); color: var(--muted); background: transparent; padding: 3px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+  .btn-exclude:hover { border-color: #fca5a5; color: var(--red); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .badge-red { background: #fef2f2; color: var(--red); }
+  .badge-muted { background: var(--card-elev); color: var(--muted); }
 
   /* Goods In dashboard */
-  .gi-kpi-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-  .gi-kpi { background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--accent); padding: 18px 24px; flex: 1; min-width: 140px; }
+  .gi-kpi-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .gi-kpi { background: var(--card); border: 1px solid var(--border); border-radius: 8px; border-top: 3px solid var(--accent); padding: 18px 22px; flex: 1; min-width: 140px; }
   .gi-kpi.green { border-top-color: var(--green); }
   .gi-kpi.amber { border-top-color: var(--amber); }
   .gi-kpi.red   { border-top-color: var(--red); }
   .gi-kpi.muted { border-top-color: var(--muted); }
-  .gi-kpi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
-  .gi-kpi-value { font-size: 28px; font-weight: 700; line-height: 1; }
-  .gi-kpi-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .gi-kpi-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 8px; }
+  .gi-kpi-value { font-size: 32px; font-weight: 700; line-height: 1; }
+  .gi-kpi-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
   .gi-charts { display: grid; grid-template-columns: 1fr 340px; gap: 16px; margin-bottom: 20px; }
   @media (max-width: 900px) { .gi-charts { grid-template-columns: 1fr; } }
-  .gi-chart-card { background: var(--card); border: 1px solid var(--border); padding: 20px; }
-  .gi-chart-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 16px; }
+  .gi-chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+  .gi-chart-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 16px; }
   .gi-bar-wrap { position: relative; height: 260px; }
   .gi-donut-wrap { position: relative; height: 260px; display: flex; align-items: center; justify-content: center; }
   .gi-legend { display: flex; gap: 16px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
@@ -124,51 +139,81 @@
 
   .gi-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
   .gi-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .gi-select { background: var(--card-elev); border: 1px solid var(--border-strong); color: var(--text); font-size: 12px; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-  .gi-select:focus { outline: 1px solid var(--accent); }
+  .gi-select { background: var(--card); border: 1px solid var(--border-strong); color: var(--text); font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+  .gi-select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-top">
-    <span class="brand">SCEND</span>
-    <span class="brand-sub">— Overview</span>
-    <div class="header-controls">
-      <select id="datePreset" class="date-input" onchange="applyDatePreset(this.value)" style="cursor:pointer">
-        <option value="month">This Month</option>
-        <option value="7d">Last 7 Days</option>
-        <option value="lastmonth">Last Month</option>
-        <option value="3m">Last 3 Months</option>
-        <option value="year">Last Year</option>
-        <option value="custom">Custom</option>
-      </select>
-      <span class="date-label">From</span>
-      <input type="date" id="dateFrom" class="date-input" onchange="document.getElementById('datePreset').value='custom'">
-      <span class="date-label">To</span>
-      <input type="date" id="dateTo" class="date-input" onchange="document.getElementById('datePreset').value='custom'">
-      <button class="btn" onclick="applyFilters()">Apply</button>
-      <input type="text" id="order-search" class="date-input" placeholder="Search order #..." style="width:160px" oninput="applyOrderSearch(this.value)">
-      <a href="client.html" class="client-link">Client Portal →</a>
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="brand">SCEND</div>
+      <div class="brand-sub">Overview</div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" title="Goods In" onclick="switchTab('goods-in')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span class="nav-label">Goods In</span>
+      </button>
+      <button class="nav-item" title="Dispatch SLA" onclick="switchTab('dispatch')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="nav-label">Dispatch SLA</span>
+      </button>
+      <button class="nav-item" title="Returns" onclick="switchTab('returns')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        <span class="nav-label">Returns</span>
+      </button>
+      <button class="nav-item" title="Late Orders" id="tab-btn-late" onclick="switchTab('late')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span class="nav-label">Late Orders</span>
+      </button>
+      <button class="nav-item" title="Courier Performance" onclick="switchTab('courier')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span class="nav-label">Courier Performance</span>
+      </button>
+      <button class="nav-item" title="Exceptions" id="tab-btn-exceptions" onclick="switchTab('exceptions')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span class="nav-label">Exceptions</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="client.html" class="client-link" title="Client Portal">→</a>
+    </div>
+  </aside>
+
+  <div class="content">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">Goods In</span>
+      <div class="topbar-controls">
+        <select id="datePreset" class="date-input" onchange="applyDatePreset(this.value)" style="cursor:pointer">
+          <option value="month">This Month</option>
+          <option value="7d">Last 7 Days</option>
+          <option value="lastmonth">Last Month</option>
+          <option value="3m">Last 3 Months</option>
+          <option value="year">Last Year</option>
+          <option value="custom">Custom</option>
+        </select>
+        <span class="date-label">From</span>
+        <input type="date" id="dateFrom" class="date-input" onchange="document.getElementById('datePreset').value='custom'">
+        <span class="date-label">To</span>
+        <input type="date" id="dateTo" class="date-input" onchange="document.getElementById('datePreset').value='custom'">
+        <button class="btn" onclick="applyFilters()">Apply</button>
+        <input type="text" id="order-search" class="date-input" placeholder="Search order #..." style="width:160px" oninput="applyOrderSearch(this.value)">
+      </div>
+    </div>
+
+    <div class="main">
+      <div id="tab-goods-in" class="tab-panel active"></div>
+      <div id="tab-dispatch" class="tab-panel"></div>
+      <div id="tab-returns" class="tab-panel"></div>
+      <div id="tab-late" class="tab-panel"></div>
+      <div id="tab-courier" class="tab-panel"></div>
+      <div id="tab-exceptions" class="tab-panel"></div>
     </div>
   </div>
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('goods-in')">Goods In</button>
-    <button class="tab-btn" onclick="switchTab('dispatch')">Dispatch SLA</button>
-    <button class="tab-btn" onclick="switchTab('returns')">Returns</button>
-    <button class="tab-btn" id="tab-btn-late" onclick="switchTab('late')">Late Orders</button>
-    <button class="tab-btn" onclick="switchTab('courier')">Courier Performance</button>
-    <button class="tab-btn" id="tab-btn-exceptions" onclick="switchTab('exceptions')">Exceptions</button>
-  </div>
-</div>
 
-<div class="main">
-  <div id="tab-goods-in" class="tab-panel active"></div>
-  <div id="tab-dispatch" class="tab-panel"></div>
-  <div id="tab-returns" class="tab-panel"></div>
-  <div id="tab-late" class="tab-panel"></div>
-  <div id="tab-courier" class="tab-panel"></div>
-  <div id="tab-exceptions" class="tab-panel"></div>
 </div>
 
 <script>
@@ -326,10 +371,13 @@ function applyFilters() {
 
 function switchTab(tab) {
   activeTab = tab;
-  document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    const tabs = ['goods-in','dispatch','returns','late','courier','exceptions'];
-    b.classList.toggle('active', tabs[i] === tab);
+  const tabLabels = {'goods-in':'Goods In','dispatch':'Dispatch SLA','returns':'Returns','late':'Late Orders','courier':'Courier Performance','exceptions':'Exceptions'};
+  document.querySelectorAll('.nav-item').forEach(b => {
+    const t = b.getAttribute('onclick')?.match(/switchTab\('(.+?)'\)/)?.[1];
+    b.classList.toggle('active', t === tab);
   });
+  const titleEl = document.getElementById('topbar-title');
+  if (titleEl) titleEl.textContent = tabLabels[tab] || tab;
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   loadActiveTab();
@@ -341,12 +389,58 @@ function switchTab(tab) {
 }
 
 function applyOrderSearch(value) {
-  const q = value.trim().toLowerCase();
+  const q = value.trim();
+  if (activeTab === 'dispatch') {
+    searchDispatchOrder(q);
+    return;
+  }
+  const ql = q.toLowerCase();
   const panel = document.querySelector('.tab-panel.active');
   if (!panel) return;
   panel.querySelectorAll('tbody tr').forEach(row => {
-    row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    row.style.display = (!ql || row.textContent.toLowerCase().includes(ql)) ? '' : 'none';
   });
+}
+
+let _dispatchSearchTimeout = null;
+async function searchDispatchOrder(q) {
+  const panel = document.getElementById('tab-dispatch');
+  if (!q) { loadDispatch(); return; }
+  clearTimeout(_dispatchSearchTimeout);
+  _dispatchSearchTimeout = setTimeout(async () => {
+    panel.innerHTML = spinner();
+    try {
+      const [orders, exclusions] = await Promise.all([
+        sbFetchAll('orders', [['order_number', `ilike.*${q}*`]],
+          'id,client_name,order_number,order_date,order_received_at,required_ship_date,shipped_date,fulfillment_status,tags,shiphero_url,items',
+          'order_date.desc'),
+        sbFetchAll('sla_exclusions', [], 'id,order_number,client_name', null),
+      ]);
+      const excludedSet = new Set(exclusions.map(e => `${e.client_name}:${e.order_number}`));
+      function effSlaStatus(o) {
+        if (excludedSet.has(`${o.client_name}:${o.order_number}`)) return 'excluded';
+        return slaStatus(o);
+      }
+      if (orders.length === 0) {
+        panel.innerHTML = `<div class="empty-box">No orders found matching "<strong>${q}</strong>"</div>`;
+        return;
+      }
+      const cols = [
+        {label:'Client',        field:'client_name',       fmt: r => r.client_name || '—'},
+        {label:'Order #',       field:'order_number',      fmt: r => r.shiphero_url ? `<a href="${r.shiphero_url}" target="_blank">${r.order_number}</a>` : (r.order_number || '—')},
+        {label:'Order Date',    field:'order_date',        fmt: r => r.order_date?.slice(0,10) || '—'},
+        {label:'Required Ship', field:'required_ship_date',fmt: r => r.required_ship_date?.slice(0,10) || '—'},
+        {label:'Shipped',       field:'shipped_date',      fmt: r => r.shipped_date?.slice(0,10) || '—'},
+        {label:'SLA Status',    field:'_sla',              fmt: r => { const s = effSlaStatus(r); const cls = s==='compliant'?'badge-green':s==='late'?'badge-red':'badge-muted'; return `<span class="badge ${cls}">${s}</span>`; }},
+        {label:'Fulfilment',    field:'fulfillment_status',fmt: r => r.fulfillment_status || '—'},
+      ];
+      panel.innerHTML =
+        `<div style="padding:0 0 14px;font-size:13px;color:var(--muted)">${orders.length} order${orders.length!==1?'s':''} matching <strong style="color:var(--text)">"${q}"</strong> <span style="font-size:11px">(all dates)</span></div>` +
+        buildTable('dispatch-search', cols, orders);
+    } catch(e) {
+      panel.innerHTML = errBox(e.message);
+    }
+  }, 350);
 }
 
 function loadActiveTab() {
@@ -683,20 +777,23 @@ function renderGoodsIn(allWebhook, sbItemsByPo, sbItemsByClient, sbGoodsIn) {
     });
     const sortedDates = Object.keys(unitsByDate).sort();
     _giUnitsChart = new Chart(unitsCtx, {
-      type: 'bar',
+      type: 'line',
       data: {
         labels: sortedDates.map(d => fmtDate(d)),
         datasets: [{ label: 'Units', data: sortedDates.map(d => unitsByDate[d]),
-          backgroundColor: 'rgba(10,186,181,0.7)', borderWidth: 0, borderRadius: 2 }]
+          borderColor: '#2563eb', borderWidth: 2,
+          backgroundColor: 'rgba(37,99,235,0.08)',
+          pointBackgroundColor: '#2563eb', pointRadius: 3, pointHoverRadius: 5,
+          fill: true, tension: 0.3 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false },
           tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString()} units` } } },
         scales: {
-          x: { ticks: { color: '#8c8c8c', font: { size: 10 } }, grid: { color: '#262626' } },
-          y: { ticks: { color: '#8c8c8c', font: { size: 10 },
-            callback: v => v.toLocaleString() }, grid: { color: '#262626' } }
+          x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#e5e7eb' } },
+          y: { ticks: { color: '#9ca3af', font: { size: 10 },
+            callback: v => v.toLocaleString() }, grid: { color: '#e5e7eb' } }
         }
       }
     });
@@ -748,8 +845,8 @@ function renderGoodsIn(allWebhook, sbItemsByPo, sbItemsByClient, sbGoodsIn) {
           }
         },
         scales: {
-          x: { ticks: { color:'#8c8c8c', font:{size:9}, maxRotation:45 }, grid:{color:'#1a1a1a'} },
-          y: { ticks: { color:'#8c8c8c', font:{size:11} }, grid:{color:'#1a1a1a'} }
+          x: { ticks: { color:'#9ca3af', font:{size:9}, maxRotation:45 }, grid:{color:'#e5e7eb'} },
+          y: { ticks: { color:'#9ca3af', font:{size:11} }, grid:{color:'#e5e7eb'} }
         }
       }
     });
@@ -1451,6 +1548,31 @@ const CARRIER_NAMES = {
 function carrierDisplayName(code) {
   return CARRIER_NAMES[(code||'').toLowerCase()] || code || 'Unknown';
 }
+function trackingLink(carrier_code, tracking_number) {
+  if (tracking_number == null) return '—';
+  let t = String(tracking_number);
+  // Convert scientific notation (e.g. "6.81202E+13") to full integer string
+  if (/e\+/i.test(t)) { const n = Number(t); if (!isNaN(n) && isFinite(n)) t = String(Math.round(n)); }
+  if (!t || t === 'null') return '—';
+  const c = (carrier_code || '').toLowerCase();
+  const urls = {
+    'dhl': `https://www.dhl.com/gb-en/home/tracking/tracking-parcel.html?submit=1&tracking-id=${t}`,
+    'dhl_parcel_gb': `https://www.dhl.com/gb-en/home/tracking/tracking-parcel.html?submit=1&tracking-id=${t}`,
+    'dpd': `https://www.dpd.co.uk/apps/tracking/?reference=${t}`,
+    'dpd_local': `https://www.dpd.co.uk/apps/tracking/?reference=${t}`,
+    'royal_mail': `https://www.royalmail.com/track-your-item#/tracking-results/${t}`,
+    'hermes_gb': `https://www.evri.com/track-a-parcel/result?trackingReference=${t}`,
+    'hermes': `https://www.evri.com/track-a-parcel/result?trackingReference=${t}`,
+    'myhermes': `https://www.evri.com/track-a-parcel/result?trackingReference=${t}`,
+    'ups': `https://www.ups.com/track?trackingNumber=${t}`,
+    'fedex': `https://www.fedex.com/fedextrack/?trknbr=${t}`,
+    'fedexcrossborder': `https://www.fedex.com/fedextrack/?trknbr=${t}`,
+  };
+  const url = urls[c];
+  return url
+    ? `<a href="${url}" target="_blank" rel="noopener" style="font-family:monospace;font-size:12px">${t}</a>`
+    : `<span style="font-family:monospace;font-size:12px">${t}</span>`;
+}
 function slaDaysForMethod(code) {
   if (!code) return 3;
   const c = code.toLowerCase();
@@ -1655,6 +1777,8 @@ function exceptionBadge(status) {
 }
 
 let _excClientFilter = 'All Clients';
+let _excStatusFilter = null;
+let _excChart = null;
 
 async function loadExceptions() {
   const panel = document.getElementById('tab-exceptions');
@@ -1668,95 +1792,183 @@ async function loadExceptions() {
     ];
 
     const [handoverParcels, parcels] = await Promise.all([
-      // Missing handover: shipped >1 day ago, carrier not yet scanned
       sbFetchAll('sendcloud_parcels',
         [['latest_status', 'in.(ready_to_send,labelled)'], ['shipped_at', `lte.${yesterday}T23:59:59`], ...dateFilters, ...clientFilter],
         'order_number,tracking_number,brand_name,carrier_code,shipping_method_name,shipped_at,latest_status', 'shipped_at.asc'),
-      // Active exceptions
       sbFetchAll('sendcloud_parcels',
         [['latest_status', `in.(${EXCEPTION_STATUSES.join(',')})`], ...dateFilters, ...clientFilter],
         'parcel_id,order_number,tracking_number,brand_name,carrier_code,latest_status,shipped_at', 'shipped_at.desc'),
     ]);
 
+    window._excParcels = parcels;
+    window._excHandover = handoverParcels;
+
+    // Fetch ShipHero URLs for all order numbers in exceptions
+    const allOrderNums = [...new Set([...parcels, ...handoverParcels].map(p => p.order_number).filter(Boolean))];
+    const orderUrlMap = {};
+    if (allOrderNums.length > 0) {
+      try {
+        const orderRows = await sbFetchAll('orders',
+          [['order_number', `in.(${allOrderNums.join(',')})`]],
+          'order_number,shiphero_url', null);
+        orderRows.forEach(o => { if (o.shiphero_url) orderUrlMap[o.order_number] = o.shiphero_url; });
+      } catch(_) {}
+    }
+    window._excOrderUrls = orderUrlMap;
+
     const totalAlerts = handoverParcels.length + parcels.length;
     const btn = document.getElementById('tab-btn-exceptions');
-    if (btn) btn.innerHTML = `Exceptions${totalAlerts > 0 ? `<span class="tab-badge">${totalAlerts}</span>` : ''}`;
+    if (btn) { btn.querySelector('.tab-badge')?.remove(); if (totalAlerts > 0) { const b = document.createElement('span'); b.className = 'tab-badge'; b.textContent = totalAlerts; btn.appendChild(b); } }
 
     const allBrands = [...new Set([...parcels, ...handoverParcels].map(p => p.brand_name).filter(Boolean))].sort();
-    const today = new Date();
+
+    // ── Build byStatus for chart ──────────────────────────────────────────────
+    const byStatus = {};
+    parcels.forEach(p => { byStatus[p.latest_status] = (byStatus[p.latest_status] || 0) + 1; });
+    const statusEntries = Object.entries(byStatus).sort((a,b) => b[1]-a[1]);
+    const chartH = Math.max(100, statusEntries.length * 44);
 
     let html = `
-    <div class="gi-toolbar">
+    <div class="gi-toolbar" style="margin-bottom:16px">
       <div class="gi-filters">
-        <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Client:</span>
-        <select class="gi-select" onchange="_excClientFilter=this.value;loadExceptions()">
+        <span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Client:</span>
+        <select class="gi-select" onchange="_excClientFilter=this.value;_excStatusFilter=null;loadExceptions()">
           <option${_excClientFilter==='All Clients'?' selected':''}>All Clients</option>
           ${allBrands.map(b=>`<option${_excClientFilter===b?' selected':''}>${b}</option>`).join('')}
         </select>
       </div>
     </div>`;
 
-    // ── Missing Handover section ──────────────────────────────────────────────
+    if (totalAlerts === 0) {
+      html += emptyBox('No exceptions or missing handovers for this period 🎉');
+      panel.innerHTML = html;
+      return;
+    }
+
+    // ── Chart ─────────────────────────────────────────────────────────────────
+    if (parcels.length > 0) {
+      html += `
+      <div class="gi-chart-card" style="margin-bottom:20px">
+        <div class="gi-chart-title">Active Exceptions by Type — ${parcels.length} parcel${parcels.length!==1?'s':''} &nbsp;<span style="font-weight:400;color:var(--muted)">(click a bar to filter)</span></div>
+        <div style="position:relative;height:${chartH}px"><canvas id="excChart"></canvas></div>
+      </div>
+      <div id="exc-table-area" style="margin-bottom:20px"></div>`;
+    }
+
+    // ── Missing scans ─────────────────────────────────────────────────────────
     if (handoverParcels.length > 0) {
-      html += `<div style="background:rgba(245,196,81,0.08);border:1px solid var(--amber);padding:16px 20px;margin-bottom:20px">
-        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--amber);margin-bottom:12px">
-          ⚠ Missing First Scan — ${handoverParcels.length} parcel${handoverParcels.length!==1?'s':''} shipped >1 day ago with no carrier scan
-        </p>
+      const today = new Date();
+      html += `<div class="gi-chart-card" style="border-top:3px solid var(--amber)">
+        <div class="gi-chart-title" style="color:var(--amber)">Missing First Scan — ${handoverParcels.length} parcel${handoverParcels.length!==1?'s':''} shipped >1 day ago with no carrier scan</div>
         <div class="table-wrap"><table><thead><tr>
-          <th>Client</th><th>Order #</th><th>Carrier</th><th>Service</th><th>Shipped</th><th>Days</th><th>Tracking</th>
+          <th>Client</th><th>Order #</th><th>Carrier</th><th>Service</th><th>Shipped</th><th>Days Waiting</th><th>Tracking</th>
         </tr></thead><tbody>`;
       handoverParcels.forEach(p => {
         const days = Math.round((today - new Date(p.shipped_at)) / 86400000);
         const dayColor = days > 3 ? 'var(--red)' : 'var(--amber)';
+        const orderUrl = (window._excOrderUrls||{})[p.order_number];
+        const orderCell = orderUrl ? `<a href="${orderUrl}" target="_blank" rel="noopener">${p.order_number}</a>` : (p.order_number||'—');
         html += `<tr>
-          <td>${clientLink(p.brand_name || '—')}</td>
-          <td>${p.order_number || '—'}</td>
+          <td>${clientLink(p.brand_name||'—')}</td>
+          <td>${orderCell}</td>
           <td style="font-weight:600">${carrierDisplayName(p.carrier_code)}</td>
-          <td style="color:var(--muted);font-size:12px">${p.shipping_method_name || '—'}</td>
+          <td style="color:var(--muted);font-size:12px">${p.shipping_method_name||'—'}</td>
           <td>${fmtDate(p.shipped_at?.slice(0,10))}</td>
-          <td><span style="color:${dayColor};font-weight:600">${days}d</span></td>
-          <td>${p.tracking_number || '—'}</td>
+          <td><span style="color:${dayColor};font-weight:700">${days}d</span></td>
+          <td>${trackingLink(p.carrier_code, p.tracking_number)}</td>
         </tr>`;
       });
       html += `</tbody></table></div></div>`;
     }
 
-    // ── Active Exceptions section ─────────────────────────────────────────────
-    if (parcels.length > 0) {
-      const byStatus = {};
-      parcels.forEach(p => { byStatus[p.latest_status] = (byStatus[p.latest_status] || 0) + 1; });
-
-      html += `<p class="gi-chart-title" style="margin-bottom:12px">Active Exceptions — ${parcels.length} parcel${parcels.length!==1?'s':''}</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">`;
-      Object.entries(byStatus).sort((a,b) => b[1]-a[1]).forEach(([s,n]) => {
-        html += `<span class="badge ${EXCEPTION_RED.has(s)?'badge-red':'badge-amber'}" style="font-size:12px;padding:4px 10px">${s.replace(/_/g,' ')} &nbsp;<strong>${n}</strong></span>`;
-      });
-      html += `</div>`;
-
-      const cols = [
-        {label:'Client',   field:'brand_name',     fmt: r => clientLink(r.brand_name || '—')},
-        {label:'Order #',  field:'order_number',    fmt: r => r.order_number || '—'},
-        {label:'Carrier',  field:'carrier_code',    fmt: r => carrierDisplayName(r.carrier_code)},
-        {label:'Status',   field:'latest_status',   fmt: r => exceptionBadge(r.latest_status)},
-        {label:'Shipped',  field:'shipped_at',      fmt: r => fmtDate(r.shipped_at?.slice(0,10))},
-        {label:'Days',     field:'_days',           fmt: r => {
-          const d = Math.round((today - new Date(r.shipped_at)) / 86400000);
-          return `<span style="color:${d>7?'var(--red)':d>3?'var(--amber)':'var(--muted)'};font-weight:600">${d}d</span>`;
-        }},
-        {label:'Tracking', field:'tracking_number', fmt: r => r.tracking_number || '—'},
-      ];
-      const rows = parcels.map(p => ({...p, _days: Math.round((today - new Date(p.shipped_at)) / 86400000)}));
-      html += buildTable('exceptions', cols, rows);
-    }
-
-    if (totalAlerts === 0) {
-      html += emptyBox('No exceptions or missing handovers for this period 🎉');
-    }
-
     panel.innerHTML = html;
+
+    // ── Render chart ──────────────────────────────────────────────────────────
+    if (parcels.length > 0) {
+      if (_excChart) { _excChart.destroy(); _excChart = null; }
+      const ctx = document.getElementById('excChart');
+      if (ctx && statusEntries.length) {
+        const statuses = statusEntries.map(([s]) => s);
+        const labels   = statuses.map(s => s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+        const data     = statusEntries.map(([,n]) => n);
+        const getColors = (sel) => statuses.map(s => {
+          const isRed = EXCEPTION_RED.has(s);
+          if (sel === null || s === sel) return isRed ? 'rgba(220,38,38,0.75)' : 'rgba(217,119,6,0.75)';
+          return isRed ? 'rgba(220,38,38,0.18)' : 'rgba(217,119,6,0.18)';
+        });
+        _excChart = new Chart(ctx, {
+          type: 'bar',
+          data: { labels, datasets: [{ data, backgroundColor: getColors(_excStatusFilter), borderWidth: 0, borderRadius: 4 }] },
+          options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: c => ` ${c.parsed.x} parcel${c.parsed.x!==1?'s':''} — click to filter` } }
+            },
+            scales: {
+              x: { ticks: { color:'#9ca3af', font:{size:11} }, grid:{color:'#e5e7eb'} },
+              y: { ticks: { color:'#374151', font:{size:13} }, grid:{display:false} }
+            },
+            onClick(e, els) {
+              if (!els.length) { _excStatusFilter = null; }
+              else {
+                const s = statuses[els[0].index];
+                _excStatusFilter = (_excStatusFilter === s) ? null : s;
+              }
+              _excChart.data.datasets[0].backgroundColor = getColors(_excStatusFilter);
+              _excChart.update();
+              renderExcTable();
+            }
+          }
+        });
+      }
+      renderExcTable();
+    }
+
   } catch(e) {
-    panel.innerHTML = errBox(e.message);
+    document.getElementById('tab-exceptions').innerHTML = errBox(e.message);
   }
+}
+
+function renderExcTable() {
+  const area = document.getElementById('exc-table-area');
+  if (!area) return;
+  const parcels = window._excParcels || [];
+  const today = new Date();
+  const filtered = _excStatusFilter ? parcels.filter(p => p.latest_status === _excStatusFilter) : parcels;
+  const labelText = _excStatusFilter
+    ? `${_excStatusFilter.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())} — ${filtered.length} parcel${filtered.length!==1?'s':''}`
+    : `All Exceptions — ${parcels.length} parcel${parcels.length!==1?'s':''}`;
+  const orderUrls = window._excOrderUrls || {};
+  const cols = [
+    {label:'Client',   field:'brand_name',     fmt: r => clientLink(r.brand_name||'—')},
+    {label:'Order #',  field:'order_number',    fmt: r => { const url=orderUrls[r.order_number]; return url ? `<a href="${url}" target="_blank" rel="noopener">${r.order_number}</a>` : (r.order_number||'—'); }},
+    {label:'Carrier',  field:'carrier_code',    fmt: r => carrierDisplayName(r.carrier_code)},
+    {label:'Issue',    field:'latest_status',   fmt: r => exceptionBadge(r.latest_status)},
+    {label:'Shipped',  field:'shipped_at',      fmt: r => fmtDate(r.shipped_at?.slice(0,10))},
+    {label:'Days',     field:'_days',           fmt: r => { const d=r._days; return `<span style="color:${d>7?'var(--red)':d>3?'var(--amber)':'var(--muted)'};font-weight:700">${d}d</span>`; }},
+    {label:'Tracking', field:'tracking_number', fmt: r => trackingLink(r.carrier_code, r.tracking_number)},
+  ];
+  const rows = filtered.map(p => ({...p, _days: Math.round((today - new Date(p.shipped_at)) / 86400000)}));
+  area.innerHTML =
+    `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+       <span style="font-size:13px;font-weight:600;color:var(--text)">${labelText}</span>
+       ${_excStatusFilter ? `<button onclick="clearExcFilter()" style="font-size:11px;color:var(--muted);background:var(--card-elev);border:1px solid var(--border-strong);padding:3px 10px;border-radius:5px;cursor:pointer">× Clear filter</button>` : ''}
+     </div>` +
+    buildTable('exceptions', cols, rows);
+}
+
+function clearExcFilter() {
+  _excStatusFilter = null;
+  if (_excChart) {
+    const statuses = (_excChart.data.labels||[]).map(l => l.toLowerCase().replace(/ /g,'_'));
+    _excChart.data.datasets[0].backgroundColor = statuses.map(s =>
+      EXCEPTION_RED.has(s) ? 'rgba(220,38,38,0.75)' : 'rgba(217,119,6,0.75)'
+    );
+    _excChart.update();
+  }
+  renderExcTable();
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
