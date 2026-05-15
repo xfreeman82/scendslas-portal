@@ -148,6 +148,7 @@
       <span class="date-label">To</span>
       <input type="date" id="dateTo" class="date-input" onchange="document.getElementById('datePreset').value='custom'">
       <button class="btn" onclick="applyFilters()">Apply</button>
+      <input type="text" id="order-search" class="date-input" placeholder="Search order #..." style="width:160px" oninput="applyOrderSearch(this.value)">
       <a href="client.html" class="client-link">Client Portal →</a>
     </div>
   </div>
@@ -331,6 +332,20 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   loadActiveTab();
+  // re-apply search after tab content loads
+  setTimeout(() => {
+    const q = document.getElementById('order-search')?.value;
+    if (q) applyOrderSearch(q);
+  }, 600);
+}
+
+function applyOrderSearch(value) {
+  const q = value.trim().toLowerCase();
+  const panel = document.querySelector('.tab-panel.active');
+  if (!panel) return;
+  panel.querySelectorAll('tbody tr').forEach(row => {
+    row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
+  });
 }
 
 function loadActiveTab() {
