@@ -136,6 +136,14 @@
     <select id="clientSelect" class="client-selector" onchange="onClientChange()">
     </select>
     <div class="header-controls">
+      <select id="datePreset" class="date-input" onchange="applyDatePreset(this.value)" style="cursor:pointer">
+        <option value="month">This Month</option>
+        <option value="7d">Last 7 Days</option>
+        <option value="lastmonth">Last Month</option>
+        <option value="3m">Last 3 Months</option>
+        <option value="year">Last Year</option>
+        <option value="custom">Custom</option>
+      </select>
       <span class="date-label">From</span>
       <input type="date" id="dateFrom" class="date-input">
       <span class="date-label">To</span>
@@ -355,9 +363,37 @@ function onClientChange() {
   loadActiveTab();
 }
 
+function applyDatePreset(preset) {
+  const now = new Date();
+  let from, to = now.toISOString().slice(0,10);
+  if (preset === 'month') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  } else if (preset === '7d') {
+    const d = new Date(now); d.setDate(d.getDate() - 7);
+    from = d.toISOString().slice(0,10);
+  } else if (preset === 'lastmonth') {
+    from = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0,10);
+  } else if (preset === '3m') {
+    const d = new Date(now); d.setMonth(d.getMonth() - 3);
+    from = d.toISOString().slice(0,10);
+  } else if (preset === 'year') {
+    const d = new Date(now); d.setFullYear(d.getFullYear() - 1);
+    from = d.toISOString().slice(0,10);
+  } else {
+    return;
+  }
+  dateFrom = from; dateTo = to;
+  document.getElementById('dateFrom').value = from;
+  document.getElementById('dateTo').value = to;
+  sortState = {};
+  loadActiveTab();
+}
+
 function applyFilters() {
   dateFrom = document.getElementById('dateFrom').value;
   dateTo = document.getElementById('dateTo').value;
+  document.getElementById('datePreset').value = 'custom';
   sortState = {};
   _calYear = null; _calMonth = null; // reset calendar to new date range
   loadActiveTab();
