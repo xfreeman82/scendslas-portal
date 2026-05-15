@@ -1,0 +1,7 @@
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/:client"
+  to = "/client.html"
+  status = 200
