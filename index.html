@@ -243,6 +243,7 @@ function fmtHours(h) {
 let _inboundCache = null;
 let _giBarChart = null;
 let _giDonutChart = null;
+let _giUnitsChart = null;
 
 // ── Supabase Fetch ────────────────────────────────────────────────────────────
 async function sbFetchAll(table, filters, selectCols, orderBy) {
@@ -614,6 +615,10 @@ function renderGoodsIn(allWebhook, sbItemsByPo, sbItemsByClient, sbGoodsIn) {
     </div>
   </div>
 
+  <div class="gi-chart-card" style="margin-bottom:16px">
+    <div class="gi-chart-title">Units Received by Day</div>
+    <div style="position:relative;height:220px"><canvas id="giUnitsChart"></canvas></div>
+  </div>
   <div class="gi-charts">
     <div class="gi-chart-card">
       <div class="gi-chart-title">Dock to Stock Hours by PO</div>
@@ -666,6 +671,36 @@ function renderGoodsIn(allWebhook, sbItemsByPo, sbItemsByClient, sbGoodsIn) {
   html += buildTable('goods-in', cols, tableRows);
 
   panel.innerHTML = html;
+
+  // Units by day chart
+  if (_giUnitsChart) { _giUnitsChart.destroy(); _giUnitsChart = null; }
+  const unitsCtx = document.getElementById('giUnitsChart');
+  if (unitsCtx && sbGoodsIn.length > 0) {
+    const unitsByDate = {};
+    sbGoodsIn.forEach(row => {
+      const d = row.received_date?.slice(0,10);
+      if (d) unitsByDate[d] = (unitsByDate[d] || 0) + (parseInt(row.units) || 0);
+    });
+    const sortedDates = Object.keys(unitsByDate).sort();
+    _giUnitsChart = new Chart(unitsCtx, {
+      type: 'bar',
+      data: {
+        labels: sortedDates.map(d => fmtDate(d)),
+        datasets: [{ label: 'Units', data: sortedDates.map(d => unitsByDate[d]),
+          backgroundColor: 'rgba(10,186,181,0.7)', borderWidth: 0, borderRadius: 2 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString()} units` } } },
+        scales: {
+          x: { ticks: { color: '#8c8c8c', font: { size: 10 } }, grid: { color: '#262626' } },
+          y: { ticks: { color: '#8c8c8c', font: { size: 10 },
+            callback: v => v.toLocaleString() }, grid: { color: '#262626' } }
+        }
+      }
+    });
+  }
 
   // Render bar chart
   if (_giBarChart) { _giBarChart.destroy(); _giBarChart = null; }
