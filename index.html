@@ -1440,7 +1440,7 @@ async function loadCourier() {
 
     const parcels = await sbFetchAll(
       'sendcloud_parcels', filters,
-      'brand_name,carrier_code,shipping_method_code,shipped_at,delivered_at,latest_status',
+      'brand_name,carrier_code,shipping_method_code,shipping_method_name,shipped_at,delivered_at,latest_status',
       'shipped_at.desc'
     );
 
@@ -1449,19 +1449,31 @@ async function loadCourier() {
       return;
     }
 
-    // Aggregate per carrier
+    // Aggregate per carrier (for KPIs)
     const byCarrier = {};
+    // Aggregate per service
+    const byService = {};
     for (const p of parcels) {
       const code = (p.carrier_code || 'unknown').toLowerCase();
       if (!byCarrier[code]) byCarrier[code] = { code, total:0, delivered:0, onTime:0, exceptions:0, transitSum:0, transitCount:0 };
-      const c = byCarrier[code];
-      c.total++;
+      const cr = byCarrier[code];
+      cr.total++;
       const del = isParcelDelivered(p);
-      if (del) c.delivered++;
-      if (isParcelException(p)) c.exceptions++;
+      if (del) cr.delivered++;
+      if (isParcelException(p)) cr.exceptions++;
       const td = parcelTransitDays(p);
-      if (td !== null) { c.transitSum += td; c.transitCount++; }
-      if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) c.onTime++;
+      if (td !== null) { cr.transitSum += td; cr.transitCount++; }
+      if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) cr.onTime++;
+
+      const svcName = p.shipping_method_name || carrierDisplayName(code);
+      const svcKey  = `${code}|||${svcName}`;
+      if (!byService[svcKey]) byService[svcKey] = { carrier: code, name: svcName, total:0, delivered:0, onTime:0, exceptions:0, transitSum:0, transitCount:0 };
+      const sv = byService[svcKey];
+      sv.total++;
+      if (del) sv.delivered++;
+      if (isParcelException(p)) sv.exceptions++;
+      if (td !== null) { sv.transitSum += td; sv.transitCount++; }
+      if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) sv.onTime++;
     }
 
     // Overall KPIs
@@ -1507,19 +1519,20 @@ async function loadCourier() {
       </div>
     </div>
 
-    <p class="gi-chart-title" style="margin-bottom:12px">Carrier Breakdown</p>
+    <p class="gi-chart-title" style="margin-bottom:12px">Service Breakdown</p>
     <div class="table-wrap"><table><thead><tr>
-      <th>Carrier</th><th>Parcels</th><th>Delivered %</th><th>On-Time %</th><th>Avg Transit</th><th>Exceptions</th><th>Exception %</th>
+      <th>Carrier</th><th>Service</th><th>Parcels</th><th>Delivered %</th><th>On-Time %</th><th>Avg Transit</th><th>Exceptions</th><th>Exception %</th>
     </tr></thead><tbody>`;
 
-    const carrierRows = Object.values(byCarrier).sort((a,b) => b.total - a.total);
-    for (const r of carrierRows) {
+    const serviceRows = Object.values(byService).sort((a,b) => b.total - a.total);
+    for (const r of serviceRows) {
       const dP  = r.total     ? r.delivered/r.total*100 : 0;
       const otP = r.delivered ? r.onTime/r.delivered*100 : null;
       const eP  = r.total     ? r.exceptions/r.total*100 : 0;
       const aT  = r.transitCount ? r.transitSum/r.transitCount : null;
       html += `<tr>
-        <td style="font-weight:600">${carrierDisplayName(r.code)}</td>
+        <td style="font-weight:600;white-space:nowrap">${carrierDisplayName(r.carrier)}</td>
+        <td style="color:var(--muted);font-size:12px">${r.name}</td>
         <td>${r.total.toLocaleString()}</td>
         <td>${courierPctCell(dP)}</td>
         <td>${courierPctCell(otP)}</td>
@@ -1597,31 +1610,29 @@ async function loadExceptions() {
   const panel = document.getElementById('tab-exceptions');
   panel.innerHTML = spinner();
   try {
-    const filters = [
-      ['latest_status', `in.(${EXCEPTION_STATUSES.join(',')})`],
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    const clientFilter = _excClientFilter !== 'All Clients' ? [['brand_name', `eq.${_excClientFilter}`]] : [];
+    const dateFilters  = [
+      ...(dateFrom ? [['shipped_at', `gte.${dateFrom}`]] : []),
+      ...(dateTo   ? [['shipped_at', `lte.${dateTo}T23:59:59`]] : []),
     ];
-    if (dateFrom) filters.push(['shipped_at', `gte.${dateFrom}`]);
-    if (dateTo)   filters.push(['shipped_at', `lte.${dateTo}T23:59:59`]);
-    if (_excClientFilter !== 'All Clients') filters.push(['brand_name', `eq.${_excClientFilter}`]);
 
-    const parcels = await sbFetchAll(
-      'sendcloud_parcels', filters,
-      'parcel_id,order_number,tracking_number,brand_name,carrier_code,latest_status,shipped_at',
-      'shipped_at.desc'
-    );
+    const [handoverParcels, parcels] = await Promise.all([
+      // Missing handover: shipped >1 day ago, carrier not yet scanned
+      sbFetchAll('sendcloud_parcels',
+        [['latest_status', 'in.(ready_to_send,labelled)'], ['shipped_at', `lte.${yesterday}T23:59:59`], ...dateFilters, ...clientFilter],
+        'order_number,tracking_number,brand_name,carrier_code,shipping_method_name,shipped_at,latest_status', 'shipped_at.asc'),
+      // Active exceptions
+      sbFetchAll('sendcloud_parcels',
+        [['latest_status', `in.(${EXCEPTION_STATUSES.join(',')})`], ...dateFilters, ...clientFilter],
+        'parcel_id,order_number,tracking_number,brand_name,carrier_code,latest_status,shipped_at', 'shipped_at.desc'),
+    ]);
 
-    // Update tab badge
+    const totalAlerts = handoverParcels.length + parcels.length;
     const btn = document.getElementById('tab-btn-exceptions');
-    if (btn) btn.innerHTML = `Exceptions${parcels.length > 0 ? `<span class="tab-badge">${parcels.length}</span>` : ''}`;
+    if (btn) btn.innerHTML = `Exceptions${totalAlerts > 0 ? `<span class="tab-badge">${totalAlerts}</span>` : ''}`;
 
-    if (!parcels.length) {
-      panel.innerHTML = emptyBox('No exceptions found for this period 🎉');
-      return;
-    }
-
-    const allBrands = [...new Set(parcels.map(p => p.brand_name).filter(Boolean))].sort();
-    const byStatus = {};
-    parcels.forEach(p => { byStatus[p.latest_status] = (byStatus[p.latest_status] || 0) + 1; });
+    const allBrands = [...new Set([...parcels, ...handoverParcels].map(p => p.brand_name).filter(Boolean))].sort();
     const today = new Date();
 
     let html = `
@@ -1632,35 +1643,66 @@ async function loadExceptions() {
           <option${_excClientFilter==='All Clients'?' selected':''}>All Clients</option>
           ${allBrands.map(b=>`<option${_excClientFilter===b?' selected':''}>${b}</option>`).join('')}
         </select>
-        <span style="font-size:12px;color:var(--muted);margin-left:8px">${parcels.length} parcel${parcels.length!==1?'s':''}</span>
       </div>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">`;
-    Object.entries(byStatus).sort((a,b) => b[1]-a[1]).forEach(([s,n]) => {
-      html += `<span class="badge ${EXCEPTION_RED.has(s)?'badge-red':'badge-amber'}" style="font-size:12px;padding:4px 10px">${s.replace(/_/g,' ')} &nbsp;<strong>${n}</strong></span>`;
-    });
-    html += `</div>`;
+    </div>`;
 
-    const cols = [
-      {label:'Client',   field:'brand_name',    fmt: r => clientLink(r.brand_name || '—')},
-      {label:'Order #',  field:'order_number',   fmt: r => r.order_number || '—'},
-      {label:'Carrier',  field:'carrier_code',   fmt: r => carrierDisplayName(r.carrier_code)},
-      {label:'Status',   field:'latest_status',  fmt: r => exceptionBadge(r.latest_status)},
-      {label:'Shipped',  field:'shipped_at',     fmt: r => fmtDate(r.shipped_at?.slice(0,10))},
-      {label:'Days',     field:'_days',          fmt: r => {
-        const d = Math.round((today - new Date(r.shipped_at)) / 86400000);
-        const color = d > 7 ? 'var(--red)' : d > 3 ? 'var(--amber)' : 'var(--muted)';
-        return `<span style="color:${color};font-weight:600">${d}d</span>`;
-      }},
-      {label:'Tracking', field:'tracking_number', fmt: r => r.tracking_number || '—'},
-    ];
+    // ── Missing Handover section ──────────────────────────────────────────────
+    if (handoverParcels.length > 0) {
+      html += `<div style="background:rgba(245,196,81,0.08);border:1px solid var(--amber);padding:16px 20px;margin-bottom:20px">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--amber);margin-bottom:12px">
+          ⚠ Missing First Scan — ${handoverParcels.length} parcel${handoverParcels.length!==1?'s':''} shipped >1 day ago with no carrier scan
+        </p>
+        <div class="table-wrap"><table><thead><tr>
+          <th>Client</th><th>Order #</th><th>Carrier</th><th>Service</th><th>Shipped</th><th>Days</th><th>Tracking</th>
+        </tr></thead><tbody>`;
+      handoverParcels.forEach(p => {
+        const days = Math.round((today - new Date(p.shipped_at)) / 86400000);
+        const dayColor = days > 3 ? 'var(--red)' : 'var(--amber)';
+        html += `<tr>
+          <td>${clientLink(p.brand_name || '—')}</td>
+          <td>${p.order_number || '—'}</td>
+          <td style="font-weight:600">${carrierDisplayName(p.carrier_code)}</td>
+          <td style="color:var(--muted);font-size:12px">${p.shipping_method_name || '—'}</td>
+          <td>${fmtDate(p.shipped_at?.slice(0,10))}</td>
+          <td><span style="color:${dayColor};font-weight:600">${days}d</span></td>
+          <td>${p.tracking_number || '—'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    }
 
-    const rows = parcels.map(p => ({
-      ...p,
-      _days: Math.round((today - new Date(p.shipped_at)) / 86400000),
-    }));
+    // ── Active Exceptions section ─────────────────────────────────────────────
+    if (parcels.length > 0) {
+      const byStatus = {};
+      parcels.forEach(p => { byStatus[p.latest_status] = (byStatus[p.latest_status] || 0) + 1; });
 
-    html += buildTable('exceptions', cols, rows);
+      html += `<p class="gi-chart-title" style="margin-bottom:12px">Active Exceptions — ${parcels.length} parcel${parcels.length!==1?'s':''}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">`;
+      Object.entries(byStatus).sort((a,b) => b[1]-a[1]).forEach(([s,n]) => {
+        html += `<span class="badge ${EXCEPTION_RED.has(s)?'badge-red':'badge-amber'}" style="font-size:12px;padding:4px 10px">${s.replace(/_/g,' ')} &nbsp;<strong>${n}</strong></span>`;
+      });
+      html += `</div>`;
+
+      const cols = [
+        {label:'Client',   field:'brand_name',     fmt: r => clientLink(r.brand_name || '—')},
+        {label:'Order #',  field:'order_number',    fmt: r => r.order_number || '—'},
+        {label:'Carrier',  field:'carrier_code',    fmt: r => carrierDisplayName(r.carrier_code)},
+        {label:'Status',   field:'latest_status',   fmt: r => exceptionBadge(r.latest_status)},
+        {label:'Shipped',  field:'shipped_at',      fmt: r => fmtDate(r.shipped_at?.slice(0,10))},
+        {label:'Days',     field:'_days',           fmt: r => {
+          const d = Math.round((today - new Date(r.shipped_at)) / 86400000);
+          return `<span style="color:${d>7?'var(--red)':d>3?'var(--amber)':'var(--muted)'};font-weight:600">${d}d</span>`;
+        }},
+        {label:'Tracking', field:'tracking_number', fmt: r => r.tracking_number || '—'},
+      ];
+      const rows = parcels.map(p => ({...p, _days: Math.round((today - new Date(p.shipped_at)) / 86400000)}));
+      html += buildTable('exceptions', cols, rows);
+    }
+
+    if (totalAlerts === 0) {
+      html += emptyBox('No exceptions or missing handovers for this period 🎉');
+    }
+
     panel.innerHTML = html;
   } catch(e) {
     panel.innerHTML = errBox(e.message);

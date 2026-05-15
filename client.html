@@ -1105,7 +1105,7 @@ async function loadClientCourier() {
 
     const parcels = await sbFetchAll(
       'sendcloud_parcels', filters,
-      'carrier_code,shipping_method_code,shipped_at,delivered_at,latest_status',
+      'carrier_code,shipping_method_code,shipping_method_name,shipped_at,delivered_at,latest_status',
       'shipped_at.desc'
     );
 
@@ -1114,19 +1114,30 @@ async function loadClientCourier() {
       return;
     }
 
-    // Aggregate per carrier
+    // Aggregate per carrier (for KPIs) and per service (for table)
     const byCarrier = {};
+    const byService = {};
     for (const p of parcels) {
       const code = (p.carrier_code || 'unknown').toLowerCase();
       if (!byCarrier[code]) byCarrier[code] = { code, total:0, delivered:0, onTime:0, exceptions:0, transitSum:0, transitCount:0 };
-      const c = byCarrier[code];
-      c.total++;
+      const cr = byCarrier[code];
+      cr.total++;
       const del = isParcelDelivered(p);
-      if (del) c.delivered++;
-      if (isParcelException(p)) c.exceptions++;
+      if (del) cr.delivered++;
+      if (isParcelException(p)) cr.exceptions++;
       const td = parcelTransitDays(p);
-      if (td !== null) { c.transitSum += td; c.transitCount++; }
-      if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) c.onTime++;
+      if (td !== null) { cr.transitSum += td; cr.transitCount++; }
+      if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) cr.onTime++;
+
+      const svcName = p.shipping_method_name || carrierDisplayName(code);
+      const svcKey  = `${code}|||${svcName}`;
+      if (!byService[svcKey]) byService[svcKey] = { carrier: code, name: svcName, total:0, delivered:0, onTime:0, exceptions:0, transitSum:0, transitCount:0 };
+      const sv = byService[svcKey];
+      sv.total++;
+      if (del) sv.delivered++;
+      if (isParcelException(p)) sv.exceptions++;
+      if (td !== null) { sv.transitSum += td; sv.transitCount++; }
+      if (del && td !== null && td <= slaDaysForMethod(p.shipping_method_code)) sv.onTime++;
     }
 
     const totalParcels    = parcels.length;
@@ -1162,19 +1173,20 @@ async function loadClientCourier() {
       </div>
     </div>`;
 
-    html += `<p class="section-title" style="margin-bottom:12px">Carrier Breakdown</p>
+    html += `<p class="section-title" style="margin-bottom:12px">Service Breakdown</p>
     <div class="table-wrap"><table><thead><tr>
-      <th>Carrier</th><th>Parcels</th><th>Delivered %</th><th>On-Time %</th><th>Avg Transit</th><th>Exceptions</th><th>Exception %</th>
+      <th>Carrier</th><th>Service</th><th>Parcels</th><th>Delivered %</th><th>On-Time %</th><th>Avg Transit</th><th>Exceptions</th><th>Exception %</th>
     </tr></thead><tbody>`;
 
-    const carrierRows = Object.values(byCarrier).sort((a,b) => b.total - a.total);
-    for (const r of carrierRows) {
+    const serviceRows = Object.values(byService).sort((a,b) => b.total - a.total);
+    for (const r of serviceRows) {
       const dP  = r.total     ? r.delivered/r.total*100 : 0;
       const otP = r.delivered ? r.onTime/r.delivered*100 : null;
       const eP  = r.total     ? r.exceptions/r.total*100 : 0;
       const aT  = r.transitCount ? r.transitSum/r.transitCount : null;
       html += `<tr>
-        <td style="font-weight:600">${carrierDisplayName(r.code)}</td>
+        <td style="font-weight:600;white-space:nowrap">${carrierDisplayName(r.carrier)}</td>
+        <td style="color:var(--muted);font-size:12px">${r.name}</td>
         <td>${r.total.toLocaleString()}</td>
         <td>${courierPctCell(dP)}</td>
         <td>${courierPctCell(otP)}</td>
@@ -1209,59 +1221,101 @@ async function loadClientExceptions() {
   const panel = document.getElementById('tab-exceptions');
   panel.innerHTML = spinner();
   try {
-    const filters = [
-      ['latest_status', `in.(${EXCEPTION_STATUSES.join(',')})`],
-      ['brand_name', `eq.${currentClient}`],
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    const dateFilters = [
+      ...(dateFrom ? [['shipped_at', `gte.${dateFrom}`]] : []),
+      ...(dateTo   ? [['shipped_at', `lte.${dateTo}T23:59:59`]] : []),
     ];
-    if (dateFrom) filters.push(['shipped_at', `gte.${dateFrom}`]);
-    if (dateTo)   filters.push(['shipped_at', `lte.${dateTo}T23:59:59`]);
 
-    const parcels = await sbFetchAll(
-      'sendcloud_parcels', filters,
-      'parcel_id,order_number,tracking_number,carrier_code,latest_status,shipped_at',
-      'shipped_at.desc'
-    );
+    const [handoverParcels, parcels] = await Promise.all([
+      sbFetchAll('sendcloud_parcels',
+        [['latest_status', 'in.(ready_to_send,labelled)'],
+         ['shipped_at', `lte.${yesterday}T23:59:59`],
+         ['brand_name', `eq.${currentClient}`],
+         ...dateFilters],
+        'order_number,tracking_number,carrier_code,shipping_method_name,shipped_at,latest_status',
+        'shipped_at.asc'),
+      sbFetchAll('sendcloud_parcels',
+        [['latest_status', `in.(${EXCEPTION_STATUSES.join(',')})`],
+         ['brand_name', `eq.${currentClient}`],
+         ...dateFilters],
+        'parcel_id,order_number,tracking_number,carrier_code,latest_status,shipped_at',
+        'shipped_at.desc'),
+    ]);
 
-    if (!parcels.length) {
+    const today = new Date();
+    let html = '';
+
+    // Missing handover callout
+    if (handoverParcels.length) {
+      html += `<div style="border:2px solid var(--amber);border-radius:10px;padding:16px 20px;margin-bottom:20px;background:#fffbeb">
+        <div style="font-weight:700;color:#92400e;font-size:15px;margin-bottom:12px">
+          ⚠️ Missing First Scan — ${handoverParcels.length} parcel${handoverParcels.length!==1?'s':''} not handed over to carrier
+        </div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>Order #</th><th>Carrier</th><th>Service</th><th>Shipped</th><th>Days Since Ship</th><th>Tracking</th>
+        </tr></thead><tbody>`;
+      handoverParcels.forEach(p => {
+        const days = Math.round((today - new Date(p.shipped_at)) / 86400000);
+        html += `<tr>
+          <td>${p.order_number || '—'}</td>
+          <td>${carrierDisplayName(p.carrier_code)}</td>
+          <td style="font-size:12px;color:var(--muted)">${p.shipping_method_name || '—'}</td>
+          <td>${fmtDate(p.shipped_at?.slice(0,10))}</td>
+          <td><span style="color:var(--amber);font-weight:700">${days}d</span></td>
+          <td>${p.tracking_number || '—'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    }
+
+    // Active exceptions
+    if (!parcels.length && !handoverParcels.length) {
       panel.innerHTML = emptyBox('No exceptions found for this period 🎉');
       return;
     }
 
-    const byStatus = {};
-    parcels.forEach(p => { byStatus[p.latest_status] = (byStatus[p.latest_status] || 0) + 1; });
-    const today = new Date();
+    if (parcels.length) {
+      const byStatus = {};
+      parcels.forEach(p => { byStatus[p.latest_status] = (byStatus[p.latest_status] || 0) + 1; });
 
-    let html = `<div class="kpi-row">
-      <div class="kpi-card red">
-        <div class="kpi-label">Total Exceptions</div>
-        <div class="kpi-value" style="color:var(--red)">${parcels.length}</div>
-      </div>
-      ${Object.entries(byStatus).sort((a,b)=>b[1]-a[1]).map(([s,n]) => `
-        <div class="kpi-card ${EXCEPTION_RED.has(s)?'red':'amber'}">
-          <div class="kpi-label">${s.replace(/_/g,' ')}</div>
-          <div class="kpi-value">${n}</div>
-        </div>`).join('')}
-    </div>`;
+      html += `<div style="font-weight:700;font-size:15px;margin-bottom:12px">Active Exceptions</div>`;
+      html += `<div class="kpi-row">
+        <div class="kpi-card red">
+          <div class="kpi-label">Total Exceptions</div>
+          <div class="kpi-value" style="color:var(--red)">${parcels.length}</div>
+        </div>
+        ${Object.entries(byStatus).sort((a,b)=>b[1]-a[1]).map(([s,n]) => `
+          <div class="kpi-card ${EXCEPTION_RED.has(s)?'red':'amber'}">
+            <div class="kpi-label">${s.replace(/_/g,' ')}</div>
+            <div class="kpi-value">${n}</div>
+          </div>`).join('')}
+      </div>`;
 
-    html += `<div class="table-wrap"><table><thead><tr>
-      <th>Order #</th><th>Carrier</th><th>Status</th><th>Shipped</th><th>Days</th><th>Tracking</th>
-    </tr></thead><tbody>`;
-
-    parcels.forEach(p => {
-      const days = Math.round((today - new Date(p.shipped_at)) / 86400000);
-      const dayColor = days > 7 ? 'var(--red)' : days > 3 ? 'var(--amber)' : 'var(--muted)';
-      html += `<tr>
-        <td>${p.order_number || '—'}</td>
-        <td>${carrierDisplayName(p.carrier_code)}</td>
-        <td>${exceptionBadge(p.latest_status)}</td>
-        <td>${fmtDate(p.shipped_at?.slice(0,10))}</td>
-        <td><span style="color:${dayColor};font-weight:600">${days}d</span></td>
-        <td>${p.tracking_number || '—'}</td>
-      </tr>`;
-    });
-    html += `</tbody></table></div>`;
+      html += `<div class="table-wrap"><table><thead><tr>
+        <th>Order #</th><th>Carrier</th><th>Status</th><th>Shipped</th><th>Days</th><th>Tracking</th>
+      </tr></thead><tbody>`;
+      parcels.forEach(p => {
+        const days = Math.round((today - new Date(p.shipped_at)) / 86400000);
+        const dayColor = days > 7 ? 'var(--red)' : days > 3 ? 'var(--amber)' : 'var(--muted)';
+        html += `<tr>
+          <td>${p.order_number || '—'}</td>
+          <td>${carrierDisplayName(p.carrier_code)}</td>
+          <td>${exceptionBadge(p.latest_status)}</td>
+          <td>${fmtDate(p.shipped_at?.slice(0,10))}</td>
+          <td><span style="color:${dayColor};font-weight:600">${days}d</span></td>
+          <td>${p.tracking_number || '—'}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    }
 
     panel.innerHTML = html;
+
+    // Update tab badge with total count
+    const badge = document.querySelector('[data-tab="exceptions"] .tab-badge');
+    const total = handoverParcels.length + parcels.length;
+    if (badge) { badge.textContent = total; badge.style.display = total ? '' : 'none'; }
   } catch(e) {
     panel.innerHTML = errBox(e.message);
   }
