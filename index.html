@@ -157,6 +157,7 @@
     <button class="tab-btn" onclick="switchTab('returns')">Returns</button>
     <button class="tab-btn" id="tab-btn-late" onclick="switchTab('late')">Late Orders</button>
     <button class="tab-btn" onclick="switchTab('courier')">Courier Performance</button>
+    <button class="tab-btn" id="tab-btn-exceptions" onclick="switchTab('exceptions')">Exceptions</button>
   </div>
 </div>
 
@@ -166,6 +167,7 @@
   <div id="tab-returns" class="tab-panel"></div>
   <div id="tab-late" class="tab-panel"></div>
   <div id="tab-courier" class="tab-panel"></div>
+  <div id="tab-exceptions" class="tab-panel"></div>
 </div>
 
 <script>
@@ -323,7 +325,7 @@ function applyFilters() {
 function switchTab(tab) {
   activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    const tabs = ['goods-in','dispatch','returns','late','courier'];
+    const tabs = ['goods-in','dispatch','returns','late','courier','exceptions'];
     b.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -337,6 +339,7 @@ function loadActiveTab() {
   else if (activeTab === 'returns') loadReturns();
   else if (activeTab === 'late') loadLate();
   else if (activeTab === 'courier') loadCourier();
+  else if (activeTab === 'exceptions') loadExceptions();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1568,6 +1571,96 @@ async function loadCourier() {
       html += `</tbody></table></div>`;
     }
 
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+// ── Exceptions Tab ─────────────────────────────────────────────────────────────
+const EXCEPTION_STATUSES = [
+  'attempted','delivery_delay','handover_delay','customs_issue',
+  'off_radar','hold','customer_support','pup_expiration',
+  'returned_sender','refused','dropoff_expiration',
+];
+const EXCEPTION_RED = new Set(['returned_sender','refused','customs_issue','off_radar','pup_expiration','dropoff_expiration']);
+
+function exceptionBadge(status) {
+  const cls = EXCEPTION_RED.has(status) ? 'badge-red' : 'badge-amber';
+  const label = (status || '').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+let _excClientFilter = 'All Clients';
+
+async function loadExceptions() {
+  const panel = document.getElementById('tab-exceptions');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [
+      ['latest_status', `in.(${EXCEPTION_STATUSES.join(',')})`],
+    ];
+    if (dateFrom) filters.push(['shipped_at', `gte.${dateFrom}`]);
+    if (dateTo)   filters.push(['shipped_at', `lte.${dateTo}T23:59:59`]);
+    if (_excClientFilter !== 'All Clients') filters.push(['brand_name', `eq.${_excClientFilter}`]);
+
+    const parcels = await sbFetchAll(
+      'sendcloud_parcels', filters,
+      'parcel_id,order_number,tracking_number,brand_name,carrier_code,latest_status,shipped_at',
+      'shipped_at.desc'
+    );
+
+    // Update tab badge
+    const btn = document.getElementById('tab-btn-exceptions');
+    if (btn) btn.innerHTML = `Exceptions${parcels.length > 0 ? `<span class="tab-badge">${parcels.length}</span>` : ''}`;
+
+    if (!parcels.length) {
+      panel.innerHTML = emptyBox('No exceptions found for this period 🎉');
+      return;
+    }
+
+    const allBrands = [...new Set(parcels.map(p => p.brand_name).filter(Boolean))].sort();
+    const byStatus = {};
+    parcels.forEach(p => { byStatus[p.latest_status] = (byStatus[p.latest_status] || 0) + 1; });
+    const today = new Date();
+
+    let html = `
+    <div class="gi-toolbar">
+      <div class="gi-filters">
+        <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Client:</span>
+        <select class="gi-select" onchange="_excClientFilter=this.value;loadExceptions()">
+          <option${_excClientFilter==='All Clients'?' selected':''}>All Clients</option>
+          ${allBrands.map(b=>`<option${_excClientFilter===b?' selected':''}>${b}</option>`).join('')}
+        </select>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px">${parcels.length} parcel${parcels.length!==1?'s':''}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">`;
+    Object.entries(byStatus).sort((a,b) => b[1]-a[1]).forEach(([s,n]) => {
+      html += `<span class="badge ${EXCEPTION_RED.has(s)?'badge-red':'badge-amber'}" style="font-size:12px;padding:4px 10px">${s.replace(/_/g,' ')} &nbsp;<strong>${n}</strong></span>`;
+    });
+    html += `</div>`;
+
+    const cols = [
+      {label:'Client',   field:'brand_name',    fmt: r => clientLink(r.brand_name || '—')},
+      {label:'Order #',  field:'order_number',   fmt: r => r.order_number || '—'},
+      {label:'Carrier',  field:'carrier_code',   fmt: r => carrierDisplayName(r.carrier_code)},
+      {label:'Status',   field:'latest_status',  fmt: r => exceptionBadge(r.latest_status)},
+      {label:'Shipped',  field:'shipped_at',     fmt: r => fmtDate(r.shipped_at?.slice(0,10))},
+      {label:'Days',     field:'_days',          fmt: r => {
+        const d = Math.round((today - new Date(r.shipped_at)) / 86400000);
+        const color = d > 7 ? 'var(--red)' : d > 3 ? 'var(--amber)' : 'var(--muted)';
+        return `<span style="color:${color};font-weight:600">${d}d</span>`;
+      }},
+      {label:'Tracking', field:'tracking_number', fmt: r => r.tracking_number || '—'},
+    ];
+
+    const rows = parcels.map(p => ({
+      ...p,
+      _days: Math.round((today - new Date(p.shipped_at)) / 86400000),
+    }));
+
+    html += buildTable('exceptions', cols, rows);
     panel.innerHTML = html;
   } catch(e) {
     panel.innerHTML = errBox(e.message);

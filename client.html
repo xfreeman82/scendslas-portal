@@ -148,6 +148,7 @@
     <button class="tab-btn" onclick="switchTab('dispatch')">Dispatch SLA</button>
     <button class="tab-btn" onclick="switchTab('returns')">Returns</button>
     <button class="tab-btn" onclick="switchTab('courier')">Courier Performance</button>
+    <button class="tab-btn" onclick="switchTab('exceptions')">Exceptions</button>
   </div>
 </div>
 
@@ -156,6 +157,7 @@
   <div id="tab-dispatch" class="tab-panel"></div>
   <div id="tab-returns" class="tab-panel"></div>
   <div id="tab-courier" class="tab-panel"></div>
+  <div id="tab-exceptions" class="tab-panel"></div>
 </div>
 
 <script>
@@ -363,7 +365,7 @@ function applyFilters() {
 function switchTab(tab) {
   activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    const tabs = ['goods-in','dispatch','returns','courier'];
+    const tabs = ['goods-in','dispatch','returns','courier','exceptions'];
     b.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -376,6 +378,7 @@ function loadActiveTab() {
   else if (activeTab === 'dispatch') loadDispatch();
   else if (activeTab === 'returns') loadReturns();
   else if (activeTab === 'courier') loadClientCourier();
+  else if (activeTab === 'exceptions') loadClientExceptions();
 }
 
 // ── Spinner / Error ───────────────────────────────────────────────────────────
@@ -1180,6 +1183,82 @@ async function loadClientCourier() {
         <td>${courierPctCell(eP,98,95)}</td>
       </tr>`;
     }
+    html += `</tbody></table></div>`;
+
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = errBox(e.message);
+  }
+}
+
+// ── Exceptions Tab (Client) ────────────────────────────────────────────────────
+const EXCEPTION_STATUSES = [
+  'attempted','delivery_delay','handover_delay','customs_issue',
+  'off_radar','hold','customer_support','pup_expiration',
+  'returned_sender','refused','dropoff_expiration',
+];
+const EXCEPTION_RED = new Set(['returned_sender','refused','customs_issue','off_radar','pup_expiration','dropoff_expiration']);
+
+function exceptionBadge(status) {
+  const cls = EXCEPTION_RED.has(status) ? 'badge-red' : 'badge-amber';
+  const label = (status || '').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+async function loadClientExceptions() {
+  const panel = document.getElementById('tab-exceptions');
+  panel.innerHTML = spinner();
+  try {
+    const filters = [
+      ['latest_status', `in.(${EXCEPTION_STATUSES.join(',')})`],
+      ['brand_name', `eq.${currentClient}`],
+    ];
+    if (dateFrom) filters.push(['shipped_at', `gte.${dateFrom}`]);
+    if (dateTo)   filters.push(['shipped_at', `lte.${dateTo}T23:59:59`]);
+
+    const parcels = await sbFetchAll(
+      'sendcloud_parcels', filters,
+      'parcel_id,order_number,tracking_number,carrier_code,latest_status,shipped_at',
+      'shipped_at.desc'
+    );
+
+    if (!parcels.length) {
+      panel.innerHTML = emptyBox('No exceptions found for this period 🎉');
+      return;
+    }
+
+    const byStatus = {};
+    parcels.forEach(p => { byStatus[p.latest_status] = (byStatus[p.latest_status] || 0) + 1; });
+    const today = new Date();
+
+    let html = `<div class="kpi-row">
+      <div class="kpi-card red">
+        <div class="kpi-label">Total Exceptions</div>
+        <div class="kpi-value" style="color:var(--red)">${parcels.length}</div>
+      </div>
+      ${Object.entries(byStatus).sort((a,b)=>b[1]-a[1]).map(([s,n]) => `
+        <div class="kpi-card ${EXCEPTION_RED.has(s)?'red':'amber'}">
+          <div class="kpi-label">${s.replace(/_/g,' ')}</div>
+          <div class="kpi-value">${n}</div>
+        </div>`).join('')}
+    </div>`;
+
+    html += `<div class="table-wrap"><table><thead><tr>
+      <th>Order #</th><th>Carrier</th><th>Status</th><th>Shipped</th><th>Days</th><th>Tracking</th>
+    </tr></thead><tbody>`;
+
+    parcels.forEach(p => {
+      const days = Math.round((today - new Date(p.shipped_at)) / 86400000);
+      const dayColor = days > 7 ? 'var(--red)' : days > 3 ? 'var(--amber)' : 'var(--muted)';
+      html += `<tr>
+        <td>${p.order_number || '—'}</td>
+        <td>${carrierDisplayName(p.carrier_code)}</td>
+        <td>${exceptionBadge(p.latest_status)}</td>
+        <td>${fmtDate(p.shipped_at?.slice(0,10))}</td>
+        <td><span style="color:${dayColor};font-weight:600">${days}d</span></td>
+        <td>${p.tracking_number || '—'}</td>
+      </tr>`;
+    });
     html += `</tbody></table></div>`;
 
     panel.innerHTML = html;
